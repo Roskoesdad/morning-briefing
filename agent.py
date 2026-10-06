@@ -1,6 +1,8 @@
 import os
 import re
 import time
+import urllib.request
+import json
 import feedparser
 import yfinance as yf
 from google import genai
@@ -21,7 +23,7 @@ MLB_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
 TECH_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"
 
 def extract_thumbnail(entry, category="general"):
-    """Extracts image/thumbnail URL from RSS entry, parsing HTML description if needed, with context-aware fallbacks."""
+    """Extracts image/thumbnail URL from RSS entry, parsing HTML description if needed."""
     if "media_thumbnail" in entry and entry.media_thumbnail:
         return entry.media_thumbnail[0].get("url", "")
     if "media_content" in entry and entry.media_content:
@@ -52,7 +54,9 @@ def extract_thumbnail(entry, category="general"):
 def fetch_rss_items(url, limit=10, category="general"):
     items = []
     try:
-        feed = feedparser.parse(url)
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        feed_data = urllib.request.urlopen(req, timeout=8).read()
+        feed = feedparser.parse(feed_data)
         for entry in feed.entries[:limit]:
             title = entry.get("title", "").strip()
             link = entry.get("link", "#")
@@ -60,7 +64,29 @@ def fetch_rss_items(url, limit=10, category="general"):
             if title:
                 items.append({"title": title, "link": link, "image": img})
     except Exception as e:
-        print(f"Error fetching RSS {url}: {e}")
+        print(f"Notice fetching RSS {url}: {e}")
+    return items
+
+def fetch_mlb_com_padres_news(limit=6):
+    """Fetches front-page Padres headlines directly from MLB's official team content API."""
+    items = []
+    try:
+        url = "https://statsapi.mlb.com/api/v1/teams/135?hydrate=news(limit=8)"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = urllib.request.urlopen(req, timeout=6)
+        data = json.loads(resp.read().decode('utf-8'))
+        team_data = data.get("teams", [{}])[0]
+        news_entries = team_data.get("news", {}).get("articles", [])
+        for art in news_entries[:limit]:
+            title = art.get("headline") or art.get("title")
+            link = art.get("url") or f"https://www.mlb.com/padres/news"
+            img = PADRES_LOGO
+            if art.get("images"):
+                img = art["images"][0].get("url", PADRES_LOGO)
+            if title:
+                items.append({"title": title, "link": link, "image": img})
+    except Exception as e:
+        print(f"Notice fetching MLB.com API news: {e}")
     return items
 
 def get_ticker_quotes(tickers):
@@ -115,23 +141,24 @@ def run_agent():
     print("Collecting news feeds...")
     world_news = fetch_rss_items("https://feeds.bbci.co.uk/news/world/rss.xml", limit=5, category="general")
     
+    # Top 5 San Diego Local News (CBS8 / NBC San Diego / KPBS)
     sd_local_news = fetch_rss_items("https://www.cbs8.com/feeds/syndication/rss/news/local", limit=6, category="general")
-    if not sd_local_news:
-        sd_local_news = fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
+    if len(sd_local_news) < 5:
+        sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
     sd_local_news = sd_local_news[:5]
 
-    # Multi-source Padres feed aggregator
-    padres_raw = (
-        fetch_rss_items("https://www.mlbtraderumors.com/san-diego-padres/feed", limit=6, category="padres") +
-        fetch_rss_items("https://gaslampball.com/rss/index.xml", limit=6, category="padres") +
-        fetch_rss_items("https://padres.mlblogs.com/feed", limit=6, category="padres")
-    )
-    # Deduplicate while preserving order
-    seen_titles = set()
+    # MLB.com official Padres news API + San Diego Union-Tribune + Gaslamp Ball
+    padres_mlb_api = fetch_mlb_com_padres_news(limit=5)
+    padres_sdut = fetch_rss_items("https://www.sandiegouniontribune.com/sports/padres/feed/", limit=5, category="padres")
+    padres_blogs = fetch_rss_items("https://gaslampball.com/rss/index.xml", limit=5, category="padres")
+    padres_traderumors = fetch_rss_items("https://www.mlbtraderumors.com/san-diego-padres/feed", limit=5, category="padres")
+
+    all_padres = padres_mlb_api + padres_sdut + padres_blogs + padres_traderumors
+    seen_padres = set()
     padres_articles = []
-    for item in padres_raw:
-        if item["title"] not in seen_titles:
-            seen_titles.add(item["title"])
+    for item in all_padres:
+        if item["title"] not in seen_padres:
+            seen_padres.add(item["title"])
             item["image"] = PADRES_LOGO
             padres_articles.append(item)
         if len(padres_articles) >= 5:
@@ -141,18 +168,31 @@ def run_agent():
     mlb_raw = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=12, category="mlb")
     other_mlb = []
     for item in mlb_raw:
-        if "padres" not in item["title"].lower() and item["title"] not in seen_titles:
-            seen_titles.add(item["title"])
+        if "padres" not in item["title"].lower() and item["title"] not in seen_padres:
+            seen_padres.add(item["title"])
             item["image"] = MLB_LOGO
             other_mlb.append(item)
         if len(other_mlb) >= 5:
             break
 
-    # AI Breakthroughs
-    ai_tech_items = (
-        fetch_rss_items("https://techcrunch.com/category/artificial-intelligence/feed/", limit=5, category="ai") +
-        fetch_rss_items("https://feeds.arstechnica.com/arstechnica/technologylab", limit=5, category="ai")
-    )[:10]
+    # AI & Tech Breakthroughs (The Rundown AI, TechCrunch AI, Ars Technica, Microsoft & Apple News)
+    rundown_ai = fetch_rss_items("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", limit=4, category="ai")
+    tc_ai = fetch_rss_items("https://techcrunch.com/category/artificial-intelligence/feed/", limit=4, category="ai")
+    msft_news = fetch_rss_items("https://blogs.microsoft.com/feed/", limit=4, category="ai")
+    apple_news = fetch_rss_items("https://9to5mac.com/feed/", limit=4, category="ai")
+    ars_tech = fetch_rss_items("https://feeds.arstechnica.com/arstechnica/technologylab", limit=4, category="ai")
+
+    all_ai_tech = rundown_ai + tc_ai + msft_news + apple_news + ars_tech
+    seen_tech = set()
+    ai_tech_items = []
+    for item in all_ai_tech:
+        if item["title"] not in seen_tech:
+            seen_tech.add(item["title"])
+            if not item.get("image"):
+                item["image"] = TECH_LOGO
+            ai_tech_items.append(item)
+        if len(ai_tech_items) >= 10:
+            break
 
     print("Fetching market quotes...")
     holdings_quotes = get_ticker_quotes(HOLDINGS)
@@ -164,37 +204,41 @@ async function updateWeather() {
   const container = document.getElementById('weather-forecast-list');
   if (!container) return;
   try {
-    // Spring Valley, CA coordinates: 32.7448° N, 116.9989° W
-    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles');
+    // Spring Valley, CA coordinates: 32.7448° N, 116.9989° W - 14-day extended forecast
+    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=14');
     const data = await res.json();
     if (!data.daily || !data.daily.time) return;
     
     let html = '';
     const codes = {
-      0: '☀️ Clear', 1: '🌤️ Mainly Clear', 2: '⛅ Partly Cloudy', 3: '☁️ Overcast',
-      45: '🌫️ Fog', 48: '🌫️ Fog', 51: '🌦️ Light Drizzle', 61: '🌧️ Rain', 80: '🌦️ Showers', 95: '⛈️ Storm'
+      0: '☀️ Clear', 1: '🌤️ Clear', 2: '⛅ Pt Cloudy', 3: '☁️ Overcast',
+      45: '🌫️ Fog', 48: '🌫️ Fog', 51: '🌦️ Drizzle', 61: '🌧️ Rain', 80: '🌦️ Showers', 95: '⛈️ Storm'
     };
 
-    for (let i = 0; i < Math.min(data.daily.time.length, 7); i++) {
+    for (let i = 0; i < data.daily.time.length; i++) {
       const dateStr = data.daily.time[i];
       const d = new Date(dateStr + 'T12:00:00');
       const dayName = i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' });
+      const monthDay = (d.getMonth() + 1) + '/' + d.getDate();
       const max = Math.round(data.daily.temperature_2m_max[i]);
       const min = Math.round(data.daily.temperature_2m_min[i]);
       const code = data.daily.weathercode[i];
       const desc = codes[code] || '🌤️ Fair';
       
       html += `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #f1f5f9; font-size:13px;">
-          <span style="font-weight:600; width:48px; color:#1e293b;">${dayName}</span>
-          <span style="color:#64748b; font-size:12px; flex:1; text-align:center;">${desc}</span>
-          <span style="font-weight:700; color:#0f172a;">${max}° <span style="font-weight:400; color:#94a3b8; font-size:12px;">/ ${min}°</span></span>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 4px; border-bottom:1px solid #f1f5f9; font-size:14px;">
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-weight:700; color:#1e293b; font-size:14px;">${dayName}</span>
+            <span style="font-size:11px; color:#94a3b8;">${monthDay}</span>
+          </div>
+          <span style="color:#64748b; font-size:13px; flex:1; text-align:center;">${desc}</span>
+          <span style="font-weight:700; color:#0f172a; font-size:14px;">${max}° <span style="font-weight:400; color:#94a3b8; font-size:12px;">/ ${min}°</span></span>
         </div>
       `;
     }
     container.innerHTML = html;
   } catch (e) {
-    container.innerHTML = '<div style="font-size:12px; color:#94a3b8; padding:8px 0;">Weather feed syncing...</div>';
+    container.innerHTML = '<div style="font-size:13px; color:#94a3b8; padding:8px 0;">Weather feed syncing...</div>';
   }
 }
 
@@ -237,33 +281,35 @@ setInterval(updatePadresBox, 30000);
 """
 
     prompt = (
-        "You are an executive daily intelligence briefings designer.\n"
-        "Generate a modern single-page HTML document with clean embedded CSS.\n\n"
-        "PAGE PALETTE & ARCHITECTURE:\n"
-        "- Clean White & Slate aesthetic: Page Background: #f1f5f9, Container Cards: #ffffff, Border: 1px solid #e2e8f0, Border-radius: 10px, Padding: 16px.\n"
+        "You are an executive intelligence dashboard developer.\n"
+        "Generate a single-page HTML document with embedded CSS.\n\n"
+        "PAGE STYLING & FULL-WIDTH SCREEN SIZING:\n"
+        "- Clean White & Slate aesthetic: Page Background: #f1f5f9, Container Cards: #ffffff, Border: 1px solid #e2e8f0, Border-radius: 12px, Padding: 18px.\n"
+        "- FULL WIDTH LAYOUT: Do NOT use a narrow max-width container. Use a fluid wrapper (width: 98vw; max-width: 1800px; margin: 0 auto;) so it fills the screen cleanly without wide empty margins on the sides.\n"
         "- Typography: system-ui, -apple-system, sans-serif. High contrast dark text #0f172a, muted #64748b, link #0284c7.\n"
-        "- NO TOP HEADER OR TITLE. The layout must start immediately at the top edge.\n\n"
+        "- NO TOP HEADER OR TITLE. The layout starts immediately at the very top edge.\n\n"
         "THREE-COLUMN TOP LEVEL LAYOUT:\n"
-        "1. LEFT COLUMN (WIDTH: 220px): 'Spring Valley 7-Day Weather'\n"
-        "   - Card with title: 'Spring Valley Forecast'\n"
-        "   - Insert container: <div id=\"weather-forecast-list\">Loading live forecast...</div>\n\n"
+        "1. LEFT COLUMN (WIDTH: 260px): 'Spring Valley 14-Day Forecast'\n"
+        "   - Card title: 'Spring Valley 14-Day Forecast' (18px bold)\n"
+        "   - Container: <div id=\"weather-forecast-list\">Loading live forecast...</div>\n\n"
         "2. CENTER / MAIN COLUMN (FLEX: 1, WIDE): Sports, News & Tech\n"
         "   - TOP ROW: 2 side-by-side sub-columns:\n"
         "     * BOX A: 'Sports Desk: San Diego Padres & MLB'\n"
-        "       - Live scoreboard: <div id=\"padres-live-box\" style=\"padding:10px; border-radius:6px; background:#f8fafc; border:1px solid #cbd5e1; margin-bottom:12px; font-weight:600; font-size:13px;\">Checking live Padres status...</div>\n"
+        "       - Live scoreboard: <div id=\"padres-live-box\" style=\"padding:12px; border-radius:8px; background:#f8fafc; border:1px solid #cbd5e1; margin-bottom:14px; font-weight:700; font-size:15px;\">Checking live Padres status...</div>\n"
         "       - 'SAN DIEGO PADRES (TOP 5 UPDATES)': Render all 5 items from data: " + str(padres_articles) + "\n"
-        "         Show a 44x44 thumbnail using the item's 'image' URL (the official Padres SD logo). Headline must be a clickable link <a href=\"URL\" target=\"_blank\">Title</a>.\n"
-        "       - 'LEAGUE-WIDE MLB STORIES (TOP 5)': Render all 5 items from data: " + str(other_mlb) + " with 44x44 MLB logo thumbnail and link.\n"
+        "         Display a 50x50 thumbnail using the item's 'image' URL (the official Padres SD logo). Headline must be a clickable link <a href=\"URL\" target=\"_blank\" style=\"font-size:15px; font-weight:600; color:#0f172a; text-decoration:none;\">Title</a>.\n"
+        "       - 'LEAGUE-WIDE MLB STORIES (TOP 5)': Render all 5 items from data: " + str(other_mlb) + " with 50x50 MLB logo thumbnail and link.\n"
         "     * BOX B: 'Executive News (World & San Diego)'\n"
-        "       - 'TOP 5 WORLD HEADLINES': 5 items from data: " + str(world_news) + " with 44x44 thumbnail and clickable title.\n"
-        "       - 'TOP 5 SAN DIEGO LOCAL NEWS': 5 items from data: " + str(sd_local_news) + " with 44x44 thumbnail and clickable title.\n"
-        "   - BOTTOM SECTION: 'AI & Tech Breakthroughs'\n"
-        "     * 2-column card grid of items from data: " + str(ai_tech_items) + "\n"
-        "     * Use each item's 'image' URL (never Padres logo). NO leading dots ('.') and NO 'Read more' text. Title is the direct hyperlink.\n\n"
-        "3. RIGHT COLUMN (WIDTH: 310px): 'Portfolio Pulse' & 'Watchlist Catalyst Radar'\n"
+        "       - 'TOP 5 WORLD HEADLINES': 5 items from data: " + str(world_news) + " with 50x50 thumbnail and clickable title (15px font).\n"
+        "       - 'TOP 5 SAN DIEGO LOCAL NEWS': 5 items from data: " + str(sd_local_news) + " with 50x50 thumbnail and clickable title (15px font).\n"
+        "   - BOTTOM SECTION: 'AI, Big Tech & Enterprise M&A'\n"
+        "     * Responsive 2-column card grid of exactly 10 items from data: " + str(ai_tech_items) + "\n"
+        "     * Include 54x54 thumbnail, clickable title (15px font). Highlight or note any strategic acquisitions, enterprise partnerships (e.g. Microsoft Azure, Apple integration, OpenAI developments). NO leading dots ('.') and NO 'Read more' text. Title is the direct hyperlink.\n\n"
+        "3. RIGHT COLUMN (WIDTH: 330px): 'Portfolio Pulse' & 'Watchlist Catalyst Radar'\n"
         "   - 'Portfolio Pulse' at top-right: Tight vertical listing of ALL 20 holdings: " + str(holdings_quotes) + "\n"
-        "     Use compact 13px font, 4px-5px vertical padding per row, NO inner scrollbar so that ALL 20 assets (including VOO, PLTR, TSM, EQIX) fit cleanly within standard viewport height.\n"
-        "   - 'Watchlist Catalyst Radar' directly underneath Portfolio Pulse: compact cards for: " + str(watchlist_quotes) + " with ticker, quote, and 1-sentence catalyst.\n\n"
+        "     Explicitly list VOO, TSM, PLTR, EQIX, GOOGL, META, HOOD, COST, VLO, DLTR, NVDA, MSFT, AMZN, AAPL, WMT, BRK-B, SOL-USD, DOGE-USD, XRP-USD, BTC-USD.\n"
+        "     Use compact 13px font, 3px-4px vertical padding per row, NO inner scrollbar so that ALL 20 assets fit cleanly within standard screen height.\n"
+        "   - 'Watchlist Catalyst Radar' directly underneath Portfolio Pulse: compact cards for: " + str(watchlist_quotes) + " with ticker, quote, and 1-sentence actionable catalyst.\n\n"
         "Before closing </body> tag, insert marker [[WEATHER_AND_PADRES_JS]].\n"
         "Return ONLY clean raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."
     )
