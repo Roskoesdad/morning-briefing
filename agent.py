@@ -15,78 +15,141 @@ HOLDINGS = [
 
 WATCHLIST = ["USAR", "ISRG", "LMT", "TMO", "MU", "WDC", "CSCO", "VRT", "AVGO"]
 
-def fetch_rss_headlines(url, limit=8):
+def fetch_rss_items(url, limit=10):
+    """Fetches articles with title and link."""
+    items = []
     try:
         feed = feedparser.parse(url)
-        return [entry.title for entry in feed.entries[:limit]]
-    except Exception:
-        return []
+        for entry in feed.entries[:limit]:
+            title = entry.get("title", "").strip()
+            link = entry.get("link", "#")
+            if title:
+                items.append({"title": title, "link": link})
+    except Exception as e:
+        print(f"Error fetching RSS {url}: {e}")
+    return items
 
-def collect_market_news(tickers):
-    news_items = []
-    for ticker in tickers[:8]:
+def get_ticker_quotes(tickers):
+    """Pulls current prices and daily change for tickers."""
+    quotes = {}
+    for ticker in tickers:
         try:
             t = yf.Ticker(ticker)
-            for item in t.news[:2]:
-                title = item.get("title")
-                if title:
-                    news_items.append(f"{ticker}: {title}")
+            fast_info = getattr(t, "fast_info", None)
+            price = None
+            pct_change = 0.0
+            
+            if fast_info:
+                price = fast_info.last_price
+                prev = fast_info.previous_close
+                if price and prev:
+                    pct_change = ((price - prev) / prev) * 100
+            
+            if price is None:
+                hist = t.history(period="2d")
+                if len(hist) >= 1:
+                    price = float(hist["Close"].iloc[-1])
+                    if len(hist) >= 2:
+                        prev = float(hist["Close"].iloc[-2])
+                        pct_change = ((price - prev) / prev) * 100
+
+            if price is not None:
+                quotes[ticker] = {
+                    "price": f"${price:,.2f}" if price >= 1 else f"${price:,.4f}",
+                    "pct": f"{pct_change:+.2f}%",
+                    "positive": pct_change >= 0
+                }
+            else:
+                quotes[ticker] = {"price": "N/A", "pct": "0.00%", "positive": True}
         except Exception:
-            continue
-    return news_items
+            quotes[ticker] = {"price": "N/A", "pct": "0.00%", "positive": True}
+    return quotes
 
 def get_available_flash_models():
-    """Dynamically queries the API for supported models available to your key."""
     preferred = []
     try:
         for m in client.models.list():
             name = m.name.replace("models/", "")
-            # Prioritize fast, free flash variants
             if "flash" in name.lower() and not name.endswith("-exp"):
                 preferred.append(name)
     except Exception as e:
         print(f"Notice listing models: {e}")
-    
-    # Fallback to standard names if list query returns empty
     if not preferred:
         preferred = ["gemini-3.8-flash", "gemini-3-flash-preview"]
     return preferred
 
 def run_agent():
     print("Collecting news feeds...")
-    world_news = fetch_rss_headlines("https://feeds.bbci.co.uk/news/world/rss.xml")
-    sports_news = fetch_rss_headlines("https://www.espn.com/espn/rss/news")
-    tech_news = fetch_rss_headlines("https://feeds.arstechnica.com/arstechnica/technologylab")
-    stock_news = collect_market_news(HOLDINGS + WATCHLIST)
+    world_news = fetch_rss_items("https://feeds.bbci.co.uk/news/world/rss.xml", limit=12)
+    
+    # MLB & Padres Rumors
+    mlb_general = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=15)
+    padres_articles = [item for item in mlb_general if "padres" in item["title"].lower()][:5]
+    other_mlb = [item for item in mlb_general if "padres" not in item["title"].lower()][:5]
+
+    # AI Breakthroughs (The Rundown AI style)
+    ai_tech_items = (
+        fetch_rss_items("https://techcrunch.com/category/artificial-intelligence/feed/", limit=8) +
+        fetch_rss_items("https://feeds.arstechnica.com/arstechnica/technologylab", limit=6)
+    )[:12]
+
+    print("Fetching live market prices...")
+    holdings_quotes = get_ticker_quotes(HOLDINGS)
+    watchlist_quotes = get_ticker_quotes(WATCHLIST)
 
     prompt = f"""
-You are an automated morning executive intelligence system.
-Build a clean, modern, dark-mode single-page HTML dashboard with embedded CSS.
+You are an elite executive daily intelligence briefings generator.
+Generate a complete, modern single-page HTML document with embedded CSS.
 
-Data Gathered:
-- World News: {world_news}
-- Sports News: {sports_news}
-- AI & Tech News: {tech_news}
-- Market News: {stock_news}
+STYLING & PALETTE REQUIREMENTS:
+- Modern LIGHT THEME.
+- Background: #f8fafc (slate 50).
+- Card / Module Background: #ffffff with subtle border: 1px solid #e2e8f0, box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05).
+- Text primary: #0f172a, Text secondary: #475569.
+- Accent / Brand: #0284c7 (sky blue) or #1e40af (navy).
+- Positive gains: #16a34a (green), Negative losses: #dc2626 (red).
+- Modern sans-serif font stack (system-ui, -apple-system, Segoe UI, Roboto, sans-serif).
 
-Tracked Holdings: {HOLDINGS}
-Watchlist for Purchases: {WATCHLIST}
+DASHBOARD SECTIONS REQUIRED:
 
-Layout Instructions:
-- Modern dark slate aesthetic (background: #0f172a, card background: #1e293b, text: #f8fafc, accent: #38bdf8).
-- Section 1: Top 10 World Headlines (concise single bullet points).
-- Section 2: Top 10 Sports Headlines.
-- Section 3: AI & Tech Breakthroughs.
-- Section 4: Portfolio Pulse (highlight movements or news impacting holdings).
-- Section 5: Watchlist Catalyst Radar. For the watchlist stocks (USAR, ISRG, LMT, TMO, MU, WDC, CSCO, VRT, AVGO), highlight any significant catalyst (contracts, demand, earnings surprises). Explain why it warrants immediate attention today.
+1. HEADER:
+   - "Executive Morning Intelligence"
+   - Subtitle: "Automated Daily Briefing & Threat/Opportunity Radar"
+   - Timestamp badge showing current date and update cycle.
 
-Return ONLY clean HTML code starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code ticks.
+2. SECTION: "World News Top 10"
+   - Exactly 10 concise bullet items based on World News data.
+   - EVERY headline must be a clickable HTML link `<a href="..." target="_blank">Title</a>` taking the user to the original source.
+   - Raw Data: {world_news}
+
+3. SECTION: "Sports Desk: San Diego Padres & MLB"
+   - Subsection A: "San Diego Padres Report" (Top 5 Padres-focused articles/trade rumors, plus a note on their upcoming game/series schedule). Link every title to its URL.
+   - Subsection B: "League-Wide MLB Radar" (Next 5 top baseball stories across the league with clickable links).
+   - Raw Padres Data: {padres_articles}
+   - Raw MLB Data: {other_mlb}
+
+4. SECTION: "AI & Tech Breakthroughs"
+   - Modeled after "The Rundown AI" format: punchy executive summaries of the top 10 AI developments, breakthroughs, model releases, or enterprise moves.
+   - Each item should have a clear bold takeaway and a clickable source link `<a href="..." target="_blank">Read more</a>`.
+   - Raw AI Data: {ai_tech_items}
+
+5. SECTION: "Portfolio Pulse"
+   - Display a responsive grid of ticker chips showing the real-time prices and percentage changes for all owned assets:
+     {holdings_quotes}
+   - Add a brief 2-sentence macro analysis below the ticker grid.
+
+6. SECTION: "Watchlist Catalyst Radar"
+   - Display the ticker cards for target watchlist items with real-time price & % change:
+     {watchlist_quotes}
+   - For each target ticker (USAR, ISRG, LMT, TMO, MU, WDC, CSCO, VRT, AVGO), explain actionable catalysts (DoD/government contracts, surge in AI data center demand, hospital cap-ex, earnings beats) and why it warrants observation today.
+
+OUTPUT CONSTRAINT:
+Output ONLY valid HTML starting with <!DOCTYPE html> and closing with </html>. Do not include markdown ticks (```html).
 """
 
     models_to_try = get_available_flash_models()
-    print(f"Discovered candidate models: {models_to_try}")
-
     response = None
+
     for model_name in models_to_try:
         for attempt in range(3):
             try:
@@ -96,7 +159,6 @@ Return ONLY clean HTML code starting with <!DOCTYPE html> and ending with </html
                     contents=prompt
                 )
                 if response and response.text:
-                    print(f"Success with model {model_name}!")
                     break
             except Exception as err:
                 print(f"Retry notice on {model_name}: {err}")
@@ -105,12 +167,12 @@ Return ONLY clean HTML code starting with <!DOCTYPE html> and ending with </html
             break
 
     if not response or not response.text:
-        raise RuntimeError("Could not complete generation due to upstream API capacity limits.")
+        raise RuntimeError("Generation failed across models.")
 
     clean_html = response.text.replace("```html", "").replace("```", "").strip()
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(clean_html)
-    print("index.html written successfully!")
+    print("index.html successfully updated!")
 
 if __name__ == "__main__":
     run_agent()
