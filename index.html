@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Morning Intelligence</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.15);
+            --border: #334155;
+            --badge-bg: #0369a1;
+            --empty-text: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .logo-area h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            color: var(--text-primary);
+        }
+
+        .logo-area p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .timestamp {
+            font-size: 0.875rem;
+            color: var(--accent);
+            background: var(--accent-glow);
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .full-width {
+                grid-column: span 2;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.59rem;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.75rem;
+        }
+
+        ul {
+            list-style-type: none;
+        }
+
+        li {
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+            position: relative;
+            padding-left: 1.25rem;
+        }
+
+        li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        li:last-child {
+            margin-bottom: 0;
+        }
+
+        .empty-state {
+            color: var(--empty-text);
+            font-style: italic;
+            font-size: 0.95rem;
+            padding: 0.5rem 0;
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            background-color: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .catalyst-item {
+            margin-bottom: 1.25rem;
+            border-left: 2px solid var(--accent);
+            padding-left: 1rem;
+        }
+
+        .catalyst-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .catalyst-ticker {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .catalyst-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            padding-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <h1>Executive Morning Intelligence</h1>
+                <p>Automated Daily Briefing & Threat/Opportunity Radar</p>
+            </div>
+            <div class="timestamp" id="current-date">System Time: Active</div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Section 1: Top 10 World Headlines -->
+            <div class="card">
+                <h2>Global Intelligence Feed</h2>
+                <ul>
+                    <li>Former German spy chief arrested for espionage and treason</li>
+                    <li>Ship sinks and crew missing after Black Sea drone attack</li>
+                    <li>White House defends Trump comment to let Iran 'take out' LA and San Diego</li>
+                    <li>Lawyer for one of Cornell 7 calls for special prosecutor to be removed over previous comments</li>
+                    <li>'Ghost particles' from space telescope wins physics Nobel</li>
+                    <li>Kenya confirms its first Ebola death as outbreak spreads</li>
+                    <li>Fort Hood shooter to be executed by firing squad - a first for US military since World War Two</li>
+                    <li>AfD candidate elected speaker of German regional parliament for first time</li>
+                </ul>
+            </div>
+
+            <!-- Section 2: Top 10 Sports Headlines -->
+            <div class="card">
+                <h2>Sports Desk</h2>
+                <div class="empty-state">No significant sports telemetry or active data feeds reported for this cycle.</div>
+            </div>
+
+            <!-- Section 3: AI & Tech Breakthroughs -->
+            <div class="card">
+                <h2>AI & Tech Breakthroughs</h2>
+                <div class="empty-state">No major AI or frontier tech breakthroughs captured in the current intelligence sweep.</div>
+            </div>
+
+            <!-- Section 4: Portfolio Pulse -->
+            <div class="card">
+                <h2>Portfolio Pulse</h2>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Active Tracked Holdings:</p>
+                <div class="tags-container">
+                    <span class="tag">BTC-USD</span>
+                    <span class="tag">XRP-USD</span>
+                    <span class="tag">DOGE-USD</span>
+                    <span class="tag">SOL-USD</span>
+                    <span class="tag">BRK-B</span>
+                    <span class="tag">WMT</span>
+                    <span class="tag">AAPL</span>
+                    <span class="tag">AMZN</span>
+                    <span class="tag">MSFT</span>
+                    <span class="tag">NVDA</span>
+                    <span class="tag">DLTR</span>
+                    <span class="tag">VLO</span>
+                    <span class="tag">COST</span>
+                    <span class="tag">HOOD</span>
+                    <span class="tag">META</span>
+                    <span class="tag">GOOGL</span>
+                    <span class="tag">EQIX</span>
+                    <span class="tag">PLTR</span>
+                    <span class="tag">TSM</span>
+                    <span class="tag">VOO</span>
+                </div>
+                <div class="empty-state" style="margin-top: 0.5rem;">Macro climate and geopolitical tensions (e.g., Black Sea drone escalation) require close risk-management oversight across equity and crypto holdings. No localized emergency asset-dump alerts triggered.</div>
+            </div>
+
+            <!-- Section 5: Watchlist Catalyst Radar -->
+            <div class="card full-width">
+                <h2>Watchlist Catalyst Radar</h2>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Target acquisition radar scanning for imminent enterprise catalysts, defense contracts, and supply-chain momentum.</p>
+                
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">USAR</div>
+                    <div class="catalyst-desc">Critical minerals exposure. Immediate attention warranted due to shifting global defense procurement frameworks and supply security policies favoring domestic processing infrastructure.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">ISRG</div>
+                    <div class="catalyst-desc">Advanced surgical robotics demand. Monitor for upcoming procedure volume metrics and hospital capital expenditure cycles guiding system placements.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">LMT</div>
+                    <div class="catalyst-desc">Defense prime contractor. Heightened geopolitical flashpoints (Black Sea theater, international security posture shifts) place prime defense backlog expansion on immediate watch.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">TMO</div>
+                    <div class="catalyst-desc">Life sciences infrastructure. Track biotech funding rebounds and bioprocessing inventory normalization timelines heading into current quarter guidance.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">MU</div>
+                    <div class="catalyst-desc">Memory and storage tech. High-bandwidth memory (HBM) supply agreements tied to AI accelerator rollouts represent a primary near-term pricing power catalyst.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">WDC</div>
+                    <div class="catalyst-desc">Data storage infrastructure. Flash and HDD market pricing adjustments warrant tracking as enterprise cloud capital expenditures scale up.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">CSCO</div>
+                    <div class="catalyst-desc">Enterprise networking and security. Watch for enterprise campus refresh cycles and data-center architecture upgrades tailored for heavy AI workloads.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">VRT</div>
+                    <div class="catalyst-desc">Critical digital infrastructure & thermal management. Direct beneficiary of high-density AI data center buildouts; monitor order backlog conversion speed.</div>
+                </div>
+
+                <div class="catalyst-item">
+                    <div class="catalyst-ticker">AVGO</div>
+                    <div class="catalyst-desc">Custom AI silicon and networking components. Hyperscaler custom chip design design-wins create structural valuation support and explosive revenue visibility.</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            Automated Executive Intelligence System &bull; Secure Terminal Feed &bull; Confidential
+        </footer>
+    </div>
+
+    <script>
+        // Simple dynamic timestamp generator
+        const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
+        document.getElementById('current-date').innerText = "System Time: " + new Date().toLocaleDateString('en-US', options);
+    </script>
+</body>
+</html>
