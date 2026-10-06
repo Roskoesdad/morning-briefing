@@ -35,7 +35,25 @@ def collect_market_news(tickers):
             continue
     return news_items
 
+def get_available_flash_models():
+    """Dynamically queries the API for supported models available to your key."""
+    preferred = []
+    try:
+        for m in client.models.list():
+            name = m.name.replace("models/", "")
+            # Prioritize fast, free flash variants
+            if "flash" in name.lower() and not name.endswith("-exp"):
+                preferred.append(name)
+    except Exception as e:
+        print(f"Notice listing models: {e}")
+    
+    # Fallback to standard names if list query returns empty
+    if not preferred:
+        preferred = ["gemini-3.8-flash", "gemini-3-flash-preview"]
+    return preferred
+
 def run_agent():
+    print("Collecting news feeds...")
     world_news = fetch_rss_headlines("https://feeds.bbci.co.uk/news/world/rss.xml")
     sports_news = fetch_rss_headlines("https://www.espn.com/espn/rss/news")
     tech_news = fetch_rss_headlines("https://feeds.arstechnica.com/arstechnica/technologylab")
@@ -65,32 +83,34 @@ Layout Instructions:
 Return ONLY clean HTML code starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code ticks.
 """
 
-    # Try models in sequence with retry delays if high demand occurs
-    candidate_models = ["gemini-3.8-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
-    response = None
+    models_to_try = get_available_flash_models()
+    print(f"Discovered candidate models: {models_to_try}")
 
-    for model_name in candidate_models:
-        for attempt in range(2):
+    response = None
+    for model_name in models_to_try:
+        for attempt in range(3):
             try:
-                print(f"Attempting generation with model: {model_name} (Attempt {attempt+1})...")
+                print(f"Calling {model_name} (Attempt {attempt + 1})...")
                 response = client.models.generate_content(
                     model=model_name,
                     contents=prompt
                 )
                 if response and response.text:
+                    print(f"Success with model {model_name}!")
                     break
-            except Exception as e:
-                print(f"Encountered notice on {model_name}: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+            except Exception as err:
+                print(f"Retry notice on {model_name}: {err}")
+                time.sleep(6 * (attempt + 1))
         if response and response.text:
             break
 
     if not response or not response.text:
-        raise RuntimeError("Failed to generate content across candidate models.")
+        raise RuntimeError("Could not complete generation due to upstream API capacity limits.")
 
     clean_html = response.text.replace("```html", "").replace("```", "").strip()
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(clean_html)
+    print("index.html written successfully!")
 
 if __name__ == "__main__":
     run_agent()
