@@ -80,7 +80,7 @@ def run_agent():
     print("Collecting news feeds...")
     world_news = fetch_rss_items("https://feeds.bbci.co.uk/news/world/rss.xml", limit=12)
     
-    mlb_general = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=16)
+    mlb_general = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=18)
     padres_articles = [item for item in mlb_general if "padres" in item["title"].lower()][:5]
     other_mlb = [item for item in mlb_general if "padres" not in item["title"].lower()][:5]
 
@@ -89,67 +89,21 @@ def run_agent():
         fetch_rss_items("https://feeds.arstechnica.com/arstechnica/technologylab", limit=6)
     )[:10]
 
-    print("Fetching initial market quotes...")
+    print("Fetching market quotes...")
     holdings_quotes = get_ticker_quotes(HOLDINGS)
     watchlist_quotes = get_ticker_quotes(WATCHLIST)
 
-    prompt = f"""
-You are an executive daily intelligence briefings designer.
-Generate a modern single-page HTML document with clean embedded CSS and client-side JavaScript.
-
-DESIGN & PALETTE REQUIREMENTS:
-- Clean, crisp white & slate aesthetic.
-- Page Background: #f1f5f9 (light gray/slate).
-- Container Background: #ffffff, border: 1px solid #e2e8f0, box-shadow: 0 2px 4px rgba(0,0,0,0.04), border-radius: 12px, padding: 18px.
-- Fonts: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif.
-- Text: Primary #0f172a, Secondary #475569.
-- Links: Color #0284c7, text-decoration: none. On hover: underline.
-- Compact, dense layout: Avoid excessive vertical margins so the dashboard is viewable without endless scrolling.
-
-GRID STRUCTURE:
-1. HEADER:
-   - "Executive Morning Intelligence"
-   - Right badge: "Live System Feed" with live clock.
-
-2. TOP ROW (2-COLUMN GRID):
-   - LEFT COLUMN: "Sports Desk: San Diego Padres & MLB"
-     * Embed a dedicated live scoreboard card: `<div id="padres-live-box" style="padding:12px; border-radius:8px; background:#f8fafc; border:1px solid #cbd5e1; margin-bottom:12px; font-weight:600;">Checking live Padres game status...</div>`
-     * Subheader: "San Diego Padres Rumors & Roster"
-       List up to 5 items: `<ul style="margin:4px 0 12px 18px; padding:0; font-size:14px; line-height:1.4;">` with each item being `<a href="..." target="_blank">Title</a>`.
-     * Subheader: "League-Wide MLB Radar"
-       List up to 5 items with clickable links.
-     * Raw Padres Data: {padres_articles}
-     * Raw MLB Data: {other_mlb}
-
-   - RIGHT COLUMN: "World News Top 10"
-     * Exactly 10 concise bullet points with direct clickable links: `<a href="..." target="_blank">Title</a>`.
-     * Raw World News Data: {world_news}
-
-3. MIDDLE SECTION: "AI & Tech Breakthroughs"
-   - Display the top 10 AI items in a 2-column responsive compact grid.
-   - STRICT FORMATTING: Do NOT prepend with bullet dots ('.') and do NOT include any "Read more" links. The article title itself MUST be the hyperlink: `<a href="..." target="_blank" style="font-weight:600; color:#0f172a; text-decoration:none;">Title</a>`.
-   - Raw AI Data: {ai_tech_items}
-
-4. SECTION: "Portfolio Pulse"
-   - Responsive flex/grid of ticker badges for Holdings: {holdings_quotes}.
-   - Display ticker, price, and daily % change.
-
-5. SECTION: "Watchlist Catalyst Radar"
-   - Display Watchlist items: {watchlist_quotes}.
-   - For each stock (USAR, ISRG, LMT, TMO, MU, WDC, CSCO, VRT, AVGO), provide the real-time quote chip and a concise 1-2 sentence actionable catalyst.
-
-CLIENT-SIDE JAVASCRIPT INJECTION:
-Include this script before </body> to power the live Padres API polling and time updates:
-```html
+    # JavaScript script injected as a separate variable to prevent f-string parser errors
+    js_widget = """
 <script>
 async function updatePadresBox() {
   const box = document.getElementById('padres-live-box');
+  if (!box) return;
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`[https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore,probablePitcher](https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore,probablePitcher)`);
+    const res = await fetch('https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore,probablePitcher');
     const data = await res.json();
     if (!data.dates || data.dates.length === 0 || data.dates[0].games.length === 0) {
-      box.innerHTML = "⚾ <strong>Padres:</strong> No game scheduled today.";
+      box.innerHTML = '⚾ <strong>Padres:</strong> No game scheduled today.';
       return;
     }
     const game = data.dates[0].games[0];
@@ -157,17 +111,95 @@ async function updatePadresBox() {
     const detailed = game.status.detailedState;
     const away = game.teams.away.team.name;
     const home = game.teams.home.team.name;
-    const awayScore = game.teams.away.score ?? 0;
-    const homeScore = game.teams.home.score ?? 0;
+    const awayScore = game.teams.away.score != null ? game.teams.away.score : 0;
+    const homeScore = game.teams.home.score != null ? game.teams.home.score : 0;
 
-    if (status === "Live") {
-      const inning = game.linescore ? `${game.linescore.inningState} ${game.linescore.currentInningOrdinal}` : "Live";
-      box.innerHTML = `🔴 <strong>LIVE:</strong> ${away} ${awayScore} @ ${home} ${homeScore} (${inning})`;
-    } else if (status === "Final") {
-      box.innerHTML = `🏁 <strong>FINAL:</strong> ${away} ${awayScore} - ${home} ${homeScore} (${detailed})`;
+    if (status === 'Live') {
+      const inning = game.linescore ? (game.linescore.inningState + ' ' + game.linescore.currentInningOrdinal) : 'In Progress';
+      box.innerHTML = '🔴 <span style="color:#dc2626; font-weight:700;">LIVE:</span> ' + away + ' ' + awayScore + ' @ ' + home + ' ' + homeScore + ' (' + inning + ')';
+    } else if (status === 'Final') {
+      box.innerHTML = '🏁 <strong>FINAL:</strong> ' + away + ' ' + awayScore + ' - ' + home + ' ' + homeScore + ' (' + detailed + ')';
     } else {
       const gameTime = new Date(game.gameDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      box.innerHTML = `⚾ <strong>Upcoming:</strong> ${away} @ ${home} - ${gameTime} (${detailed})`;
+      box.innerHTML = '⚾ <strong>Upcoming:</strong> ' + away + ' @ ' + home + ' - ' + gameTime + ' (' + detailed + ')';
     }
   } catch (e) {
-    box.innerHTML = "⚾ <strong>Padres:</strong> Unable to pull live box
+    box.innerHTML = '⚾ <strong>Padres:</strong> Live box feed standby.';
+  }
+}
+updatePadresBox();
+setInterval(updatePadresBox, 30000);
+</script>
+"""
+
+    prompt = (
+        "You are an executive daily intelligence briefings designer.\n"
+        "Generate a modern single-page HTML document with embedded CSS.\n\n"
+        "DESIGN & PALETTE REQUIREMENTS:\n"
+        "- Clean, crisp WHITE & SLATE theme.\n"
+        "- Page Background: #f1f5f9 (slate 100).\n"
+        "- Card Containers: #ffffff, border: 1px solid #e2e8f0, box-shadow: 0 1px 3px rgba(0,0,0,0.05), border-radius: 10px, padding: 16px.\n"
+        "- Text: Primary #0f172a, Secondary #475569.\n"
+        "- Links: #0284c7, text-decoration: none. On hover: underline.\n"
+        "- Compact density to reduce page scrolling.\n\n"
+        "LAYOUT REQUIREMENTS:\n"
+        "1. HEADER: Title 'Executive Morning Intelligence' with a date/cycle badge on the right.\n"
+        "2. TOP ROW (2-COLUMN GRID):\n"
+        "   - LEFT COLUMN: 'Sports Desk: San Diego Padres & MLB'\n"
+        "     * Insert this placeholder card at top: <div id=\"padres-live-box\" style=\"padding:10px; border-radius:6px; background:#f8fafc; border:1px solid #cbd5e1; margin-bottom:12px; font-weight:600; font-size:14px;\">Checking live Padres status...</div>\n"
+        "     * Subheader 'San Diego Padres Rumors & Roster' with up to 5 items: raw list: " + str(padres_articles) + "\n"
+        "     * Subheader 'League-Wide MLB Radar' with up to 5 items: raw list: " + str(other_mlb) + "\n"
+        "     * Every sport headline must be an HTML link <a href=\"URL\" target=\"_blank\">Title</a>.\n"
+        "   - RIGHT COLUMN: 'World News Top 10'\n"
+        "     * Exactly 10 concise bullet points with direct clickable links <a href=\"URL\" target=\"_blank\">Title</a>: raw list: " + str(world_news) + "\n"
+        "3. MIDDLE ROW: 'AI & Tech Breakthroughs'\n"
+        "   - Render top 10 items in a responsive 2-column compact list.\n"
+        "   - DO NOT include bullet points/dots ('.') and DO NOT include 'Read more' buttons.\n"
+        "   - The article title itself must be the clickable link: raw data: " + str(ai_tech_items) + "\n"
+        "4. SECTION: 'Portfolio Pulse'\n"
+        "   - Responsive chip grid displaying ticker, price, and daily percentage change: " + str(holdings_quotes) + "\n"
+        "5. SECTION: 'Watchlist Catalyst Radar'\n"
+        "   - Display ticker chips with quotes: " + str(watchlist_quotes) + "\n"
+        "   - For each target ticker (USAR, ISRG, LMT, TMO, MU, WDC, CSCO, VRT, AVGO), provide a brief 1-2 sentence actionable catalyst (contracts, growth, AI data center demand).\n\n"
+        "IMPORTANT: Before the closing </body> tag, insert the exact text marker [[PADRES_JS_INJECTION]].\n"
+        "Return ONLY raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."
+    )
+
+    models_to_try = get_available_flash_models()
+    response = None
+
+    for model_name in models_to_try:
+        for attempt in range(3):
+            try:
+                print(f"Calling {model_name} (Attempt {attempt + 1})...")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt
+                )
+                if response and response.text:
+                    break
+            except Exception as err:
+                print(f"Retry notice on {model_name}: {err}")
+                time.sleep(6 * (attempt + 1))
+        if response and response.text:
+            break
+
+    if not response or not response.text:
+        raise RuntimeError("Generation failed across candidate models.")
+
+    clean_html = response.text.replace("```html", "").replace("```", "").strip()
+    
+    # Safely inject the live Padres script
+    if "[[PADRES_JS_INJECTION]]" in clean_html:
+        clean_html = clean_html.replace("[[PADRES_JS_INJECTION]]", js_widget)
+    elif "</body>" in clean_html:
+        clean_html = clean_html.replace("</body>", f"{js_widget}</body>")
+    else:
+        clean_html += js_widget
+
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(clean_html)
+    print("index.html successfully updated!")
+
+if __name__ == "__main__":
+    run_agent()
