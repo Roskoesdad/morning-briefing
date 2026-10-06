@@ -1,4 +1,5 @@
 import os
+import time
 import feedparser
 import yfinance as yf
 from google import genai
@@ -23,7 +24,7 @@ def fetch_rss_headlines(url, limit=8):
 
 def collect_market_news(tickers):
     news_items = []
-    for ticker in tickers[:10]:
+    for ticker in tickers[:8]:
         try:
             t = yf.Ticker(ticker)
             for item in t.news[:2]:
@@ -59,15 +60,33 @@ Layout Instructions:
 - Section 2: Top 10 Sports Headlines.
 - Section 3: AI & Tech Breakthroughs.
 - Section 4: Portfolio Pulse (highlight movements or news impacting holdings).
-- Section 5: Watchlist Catalyst Radar. For the watchlist stocks (USAR, ISRG, LMT, TMO, MU, WDC, CSCO, VRT, AVGO), highlight if any significant catalyst happened (such as DoD/government contracts, major revenue bumps, new AI hardware demand, or key regulatory changes). Explain why it warrants immediate attention today.
+- Section 5: Watchlist Catalyst Radar. For the watchlist stocks (USAR, ISRG, LMT, TMO, MU, WDC, CSCO, VRT, AVGO), highlight any significant catalyst (contracts, demand, earnings surprises). Explain why it warrants immediate attention today.
 
 Return ONLY clean HTML code starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code ticks.
 """
 
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt
-    )
+    # Try models in sequence with retry delays if high demand occurs
+    candidate_models = ["gemini-3.8-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
+    response = None
+
+    for model_name in candidate_models:
+        for attempt in range(2):
+            try:
+                print(f"Attempting generation with model: {model_name} (Attempt {attempt+1})...")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt
+                )
+                if response and response.text:
+                    break
+            except Exception as e:
+                print(f"Encountered notice on {model_name}: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+        if response and response.text:
+            break
+
+    if not response or not response.text:
+        raise RuntimeError("Failed to generate content across candidate models.")
 
     clean_html = response.text.replace("```html", "").replace("```", "").strip()
     with open("index.html", "w", encoding="utf-8") as f:
