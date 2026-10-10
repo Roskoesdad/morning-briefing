@@ -22,14 +22,6 @@ PADRES_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
 MLB_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
 TECH_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"
 
-# Key names to capture player-specific Padres headlines on MLB.com
-PADRES_KEYWORDS = [
-    "padres", "san diego", "friars", "petco park", "cassavell",
-    "tatis", "machado", "merrill", "bogaerts", "michael king", "king",
-    "morejon", "adrian morejon", "ty france", "france", "dylan cease", "cease",
-    "musgrove", "robert suarez", "arApplicationez", "shildt", "preller", "cronenworth"
-]
-
 def get_financial_url(ticker):
     return f"https://finance.yahoo.com/quote/{ticker}/"
 
@@ -77,25 +69,52 @@ def fetch_rss_items(url, limit=10, category="general"):
         print(f"Notice fetching RSS {url}: {e}")
     return items
 
-def is_padres_headline(text):
-    text_lower = text.lower()
-    return any(k in text_lower for k in PADRES_KEYWORDS)
+def get_live_padres_roster_keywords():
+    """
+    Dynamically pulls the Padres active roster directly from MLB's official API
+    and builds a comprehensive list of player names, nicknames, and team identifiers.
+    """
+    keywords = {"padres", "san diego", "san diego padres", "friars", "petco park", "shildt", "preller"}
+    try:
+        # MLB Stats API Team 135 (San Diego Padres) Full 40-Man & Active Roster
+        url = "https://statsapi.mlb.com/api/v1/teams/135/roster/fullRoster"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = urllib.request.urlopen(req, timeout=6)
+        data = json.loads(resp.read().decode('utf-8'))
+        for member in data.get("roster", []):
+            person = member.get("person", {})
+            full_name = person.get("fullName", "").lower().strip()
+            if full_name:
+                keywords.add(full_name)
+                # Split parts (e.g., 'morejon', 'king', 'france', 'tatis', 'cease')
+                parts = full_name.split()
+                for p in parts:
+                    if len(p) > 3:  # Skip common short words
+                        keywords.add(p)
+    except Exception as e:
+        print(f"Notice dynamically fetching live roster: {e}")
+        # Static resilient fallback
+        keywords.update(["morejon", "king", "france", "tatis", "machado", "merrill", "bogaerts", "cease", "musgrove", "suarez", "arApplicationez", "cronenworth"])
+    return keywords
 
 def fetch_padres_and_mlb_stories():
     """
-    Tiered Waterfall Fetcher:
-    Tier 1: MLB.com front page news & MLB official team news API.
-    Tier 2: MLB Trade Rumors Padres (up to 2 recent articles).
-    Tier 3: Gaslamp Ball as last-resort backfill to ensure 5 Padres items.
+    1. Grabs live roster keywords.
+    2. Scrapes MLB.com front page/headlines and compares against every roster player & team name.
+    3. Falls back to MLB Trade Rumors Padres (top 2), then Gaslamp Ball to fulfill 5 spots.
     """
+    padres_keywords = get_live_padres_roster_keywords()
     padres_stories = []
     seen_padres_titles = set()
     mlb_stories = []
     seen_mlb_titles = set()
 
-    # --- TIER 1: MLB.com Front Page News Feed & Official API ---
+    def is_padres_match(title_str):
+        tl = title_str.lower()
+        return any(k in tl for k in padres_keywords)
+
+    # 1. Check MLB.com Front Page News Feed & Official Articles
     try:
-        # MLB.com news feed
         req = urllib.request.Request("https://www.mlb.com/feeds/news/rss.xml", headers={'User-Agent': 'Mozilla/5.0'})
         feed_data = urllib.request.urlopen(req, timeout=8).read()
         mlb_feed = feedparser.parse(feed_data)
@@ -104,7 +123,7 @@ def fetch_padres_and_mlb_stories():
             title = entry.get("title", "").strip()
             link = entry.get("link", "https://www.mlb.com")
             
-            if is_padres_headline(title):
+            if is_padres_match(title):
                 if title not in seen_padres_titles:
                     seen_padres_titles.add(title)
                     padres_stories.append({"title": title, "link": link, "image": PADRES_LOGO})
@@ -113,9 +132,9 @@ def fetch_padres_and_mlb_stories():
                     seen_mlb_titles.add(title)
                     mlb_stories.append({"title": title, "link": link, "image": MLB_LOGO})
     except Exception as e:
-        print(f"Tier 1 MLB.com feed notice: {e}")
+        print(f"MLB.com feed error: {e}")
 
-    # Query MLB.com official team content API directly for team beat articles (e.g. AJ Cassavell)
+    # Query MLB official team content API directly for team beat pieces (e.g. AJ Cassavell)
     try:
         api_url = "https://statsapi.mlb.com/api/v1/teams/135?hydrate=news(limit=10)"
         req_api = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -129,9 +148,9 @@ def fetch_padres_and_mlb_stories():
                 seen_padres_titles.add(t)
                 padres_stories.append({"title": t, "link": link, "image": PADRES_LOGO})
     except Exception as e:
-        print(f"Tier 1 MLB team content API notice: {e}")
+        print(f"MLB team news API error: {e}")
 
-    # --- TIER 2: MLB Trade Rumors Padres (Top 2 fallback) ---
+    # 2. MLB Trade Rumors Padres fallback (up to 2 articles)
     if len(padres_stories) < 5:
         traderumors_padres = fetch_rss_items("https://www.mlbtraderumors.com/san-diego-padres/feed", limit=4, category="padres")
         added_tr = 0
@@ -143,7 +162,7 @@ def fetch_padres_and_mlb_stories():
                 if added_tr >= 2 or len(padres_stories) >= 5:
                     break
 
-    # --- TIER 3: Gaslamp Ball (Last-resort backfill to 5 items) ---
+    # 3. Gaslamp Ball backfill as last resort
     if len(padres_stories) < 5:
         gaslamp = fetch_rss_items("https://www.gaslampball.com/rss/index.xml", limit=5, category="padres")
         for item in gaslamp:
@@ -153,11 +172,11 @@ def fetch_padres_and_mlb_stories():
                 if len(padres_stories) >= 5:
                     break
 
-    # If general MLB stories were light from front page, supplement from MLBTR
+    # Fill general MLB stories if needed
     if len(mlb_stories) < 5:
         supp_mlb = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=8, category="mlb")
         for item in supp_mlb:
-            if not is_padres_headline(item["title"]) and item["title"] not in seen_mlb_titles:
+            if not is_padres_match(item["title"]) and item["title"] not in seen_mlb_titles:
                 seen_mlb_titles.add(item["title"])
                 mlb_stories.append(item)
                 if len(mlb_stories) >= 5:
@@ -242,10 +261,8 @@ def run_agent():
         sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
     sd_local_news = sd_local_news[:5]
 
-    # Run waterfall collector
     padres_articles, other_mlb = fetch_padres_and_mlb_stories()
 
-    # AI & Big Tech feeds
     rundown_ai = fetch_rss_items("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", limit=4, category="ai")
     tc_ai = fetch_rss_items("https://techcrunch.com/category/artificial-intelligence/feed/", limit=4, category="ai")
     msft_news = fetch_rss_items("https://blogs.microsoft.com/feed/", limit=4, category="ai")
@@ -405,25 +422,4 @@ setInterval(updatePadresBox, 30000);
                     break
             except Exception as err:
                 print(f"Retry notice on {model_name}: {err}")
-                time.sleep(6 * (attempt + 1))
-        if response and response.text:
-            break
-
-    if not response or not response.text:
-        raise RuntimeError("Generation failed across candidate models.")
-
-    clean_html = response.text.replace("```html", "").replace("```", "").strip()
-    
-    if "[[WEATHER_AND_PADRES_JS]]" in clean_html:
-        clean_html = clean_html.replace("[[WEATHER_AND_PADRES_JS]]", js_widget)
-    elif "</body>" in clean_html:
-        clean_html = clean_html.replace("</body>", f"{js_widget}</body>")
-    else:
-        clean_html += js_widget
-
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(clean_html)
-    print("index.html successfully updated!")
-
-if __name__ == "__main__":
-    run_agent()
+                time.sleep(6 * (attempt +
