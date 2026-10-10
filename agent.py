@@ -5,6 +5,7 @@ import urllib.request
 import json
 import feedparser
 import yfinance as yf
+from datetime import datetime, timezone, timedelta
 from bs4 import BeautifulSoup
 from google import genai
 
@@ -70,8 +71,14 @@ def fetch_rss_items(url, limit=10, category="general"):
             title = entry.get("title", "").strip()
             link = entry.get("link", "#")
             img = extract_thumbnail(entry, category=category)
+            published = entry.get("published_parsed")
             if title:
-                items.append({"title": title, "link": link, "image": img})
+                items.append({
+                    "title": title,
+                    "link": link,
+                    "image": img,
+                    "published_parsed": published
+                })
     except Exception as e:
         print(f"Notice fetching RSS {url}: {e}")
     return items
@@ -81,10 +88,6 @@ def is_padres_related(text):
     return any(k in text_lower for k in PADRES_KEYWORDS)
 
 def scrape_mlb_front_page():
-    """
-    Directly scrapes https://www.mlb.com and https://www.mlb.com/padres HTML
-    to pull the exact 'Latest News' and headline articles shown on the website.
-    """
     padres_articles = []
     mlb_articles = []
     seen = set()
@@ -104,12 +107,10 @@ def scrape_mlb_front_page():
             html = urllib.request.urlopen(req, timeout=10).read().decode('utf-8', errors='ignore')
             soup = BeautifulSoup(html, 'html.parser')
 
-            # Look through all article anchor tags
             for a in soup.find_all('a', href=True):
                 href = a['href']
                 title = a.get_text(strip=True)
                 
-                # Check for standard article URL patterns on MLB.com
                 if '/news/' in href and len(title) > 20:
                     if title in seen:
                         continue
@@ -128,34 +129,57 @@ def scrape_mlb_front_page():
 
 def fetch_padres_and_mlb_stories():
     """
-    1. Scrapes MLB.com front page and MLB.com/padres directly for AJ Cassavell and Dennis Lin articles.
-    2. Falls back to MLB Trade Rumors Padres and Gaslamp Ball to reach 5 articles.
+    Padres 5-Spot Rules:
+    1. Top 2 slots: MLB.com & official Padres team news.
+    2. Slots 3 to 5: MLB Trade Rumors Padres articles strictly published within the last 2 days.
+    3. Backfill: Gaslamp Ball fills any remaining open spots up to 5 total.
     """
-    padres_stories, mlb_stories = scrape_mlb_front_page()
-    seen_padres_titles = {p["title"] for p in padres_stories}
+    padres_mlb_scraped, mlb_stories = scrape_mlb_front_page()
+    padres_final = []
+    seen_padres_titles = set()
+
+    # Step 1: Lock in top 2 MLB.com articles
+    for item in padres_mlb_scraped:
+        if item["title"] not in seen_padres_titles:
+            seen_padres_titles.add(item["title"])
+            padres_final.append(item)
+            if len(padres_final) == 2:
+                break
+
+    # Step 2: Query MLB Trade Rumors Padres with a strict 2-day (48-hour) cutoff
+    now_utc = datetime.now(timezone.utc)
+    two_days_ago = now_utc - timedelta(days=2)
+    
+    tr_items = fetch_rss_items("https://www.mlbtraderumors.com/san-diego-padres/feed", limit=8, category="padres")
+    for item in tr_items:
+        if len(padres_final) >= 5:
+            break
+        if item["title"] in seen_padres_titles:
+            continue
+        
+        # Check publication date
+        pub_parsed = item.get("published_parsed")
+        if pub_parsed:
+            try:
+                pub_dt = datetime(*pub_parsed[:6], tzinfo=timezone.utc)
+                if pub_dt >= two_days_ago:
+                    seen_padres_titles.add(item["title"])
+                    padres_final.append(item)
+            except Exception:
+                pass
+
+    # Step 3: If still under 5, fill remaining spots with Gaslamp Ball
+    if len(padres_final) < 5:
+        gaslamp_items = fetch_rss_items("https://gaslampball.com/rss/index.xml", limit=8, category="padres")
+        for item in gaslamp_items:
+            if len(padres_final) >= 5:
+                break
+            if item["title"] not in seen_padres_titles:
+                seen_padres_titles.add(item["title"])
+                padres_final.append(item)
+
+    # General MLB stories
     seen_mlb_titles = {m["title"] for m in mlb_stories}
-
-    # Fallback to MLB Trade Rumors Padres
-    if len(padres_stories) < 5:
-        traderumors_padres = fetch_rss_items("https://www.mlbtraderumors.com/san-diego-padres/feed", limit=4, category="padres")
-        for item in traderumors_padres:
-            if item["title"] not in seen_padres_titles:
-                seen_padres_titles.add(item["title"])
-                padres_stories.append(item)
-                if len(padres_stories) >= 5:
-                    break
-
-    # Fallback to Gaslamp Ball
-    if len(padres_stories) < 5:
-        gaslamp = fetch_rss_items("https://www.gaslampball.com/rss/index.xml", limit=5, category="padres")
-        for item in gaslamp:
-            if item["title"] not in seen_padres_titles:
-                seen_padres_titles.add(item["title"])
-                padres_stories.append(item)
-                if len(padres_stories) >= 5:
-                    break
-
-    # Fill general MLB stories if needed
     if len(mlb_stories) < 5:
         supp_mlb = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=8, category="mlb")
         for item in supp_mlb:
@@ -165,7 +189,7 @@ def fetch_padres_and_mlb_stories():
                 if len(mlb_stories) >= 5:
                     break
 
-    return padres_stories[:5], mlb_stories[:5]
+    return padres_final[:5], mlb_stories[:5]
 
 def get_sorted_ticker_quotes(tickers):
     data_list = []
@@ -244,7 +268,7 @@ def run_agent():
         sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
     sd_local_news = sd_local_news[:5]
 
-    print("Scraping MLB.com and team desks...")
+    print("Executing Padres 5-spot pipeline (Top 2 MLB.com + 2-Day MLBTR + Gaslamp)...")
     padres_articles, other_mlb = fetch_padres_and_mlb_stories()
 
     rundown_ai = fetch_rss_items("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", limit=4, category="ai")
@@ -365,7 +389,7 @@ setInterval(updatePadresBox, 30000);
         "   - TOP ROW: 2 side-by-side sub-columns:\n"
         "     * BOX A: 'Sports Desk: San Diego Padres & MLB'\n"
         "       - Live scoreboard: <div id=\"padres-live-box\" style=\"padding:12px; border-radius:8px; background:#f8fafc; border:1px solid #cbd5e1; margin-bottom:14px; font-weight:700; font-size:15px;\">Checking live Padres status...</div>\n"
-        "       - 'SAN DIEGO PADRES (TOP 5 UPDATES)': Render all 5 items from data: " + str(padres_articles) + "\n"
+        "       - 'SAN DIEGO PADRES (TOP 5 UPDATES)': Render all 5 items in exact order from data: " + str(padres_articles) + "\n"
         "         Display 50x50 thumbnail using the Padres SD logo. Title must be a clickable link: <a href=\"URL\" target=\"_blank\" style=\"font-size:15px; font-weight:600; color:#0f172a; text-decoration:none;\">Title</a>.\n"
         "       - 'LEAGUE-WIDE MLB STORIES (TOP 5)': Render all 5 items from data: " + str(other_mlb) + " with 50x50 MLB logo and clickable links.\n"
         "     * BOX B: 'Executive News (World & San Diego)'\n"
