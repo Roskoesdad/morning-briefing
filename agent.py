@@ -22,14 +22,18 @@ PADRES_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
 MLB_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
 TECH_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"
 
+# Key names to capture player-specific Padres headlines on MLB.com
+PADRES_KEYWORDS = [
+    "padres", "san diego", "friars", "petco park", "cassavell",
+    "tatis", "machado", "merrill", "bogaerts", "michael king", "king",
+    "morejon", "adrian morejon", "ty france", "france", "dylan cease", "cease",
+    "musgrove", "robert suarez", "arApplicationez", "shildt", "preller", "cronenworth"
+]
+
 def get_financial_url(ticker):
-    """Generates direct URL to validated catalyst and news analysis profiles."""
-    if "-USD" in ticker:
-        return f"https://finance.yahoo.com/quote/{ticker}/"
     return f"https://finance.yahoo.com/quote/{ticker}/"
 
 def extract_thumbnail(entry, category="general"):
-    """Extracts image/thumbnail URL from RSS entry, parsing HTML description if needed."""
     if "media_thumbnail" in entry and entry.media_thumbnail:
         return entry.media_thumbnail[0].get("url", "")
     if "media_content" in entry and entry.media_content:
@@ -73,35 +77,95 @@ def fetch_rss_items(url, limit=10, category="general"):
         print(f"Notice fetching RSS {url}: {e}")
     return items
 
-def fetch_mlb_com_feed():
-    """Scrapes official front-page headlines and stories from MLB.com feeds."""
+def is_padres_headline(text):
+    text_lower = text.lower()
+    return any(k in text_lower for k in PADRES_KEYWORDS)
+
+def fetch_padres_and_mlb_stories():
+    """
+    Tiered Waterfall Fetcher:
+    Tier 1: MLB.com front page news & MLB official team news API.
+    Tier 2: MLB Trade Rumors Padres (up to 2 recent articles).
+    Tier 3: Gaslamp Ball as last-resort backfill to ensure 5 Padres items.
+    """
     padres_stories = []
+    seen_padres_titles = set()
     mlb_stories = []
+    seen_mlb_titles = set()
+
+    # --- TIER 1: MLB.com Front Page News Feed & Official API ---
     try:
-        feed_url = "https://www.mlb.com/feeds/news/rss.xml"
-        req = urllib.request.Request(feed_url, headers={'User-Agent': 'Mozilla/5.0'})
+        # MLB.com news feed
+        req = urllib.request.Request("https://www.mlb.com/feeds/news/rss.xml", headers={'User-Agent': 'Mozilla/5.0'})
         feed_data = urllib.request.urlopen(req, timeout=8).read()
-        feed = feedparser.parse(feed_data)
+        mlb_feed = feedparser.parse(feed_data)
         
-        for entry in feed.entries:
+        for entry in mlb_feed.entries:
             title = entry.get("title", "").strip()
             link = entry.get("link", "https://www.mlb.com")
             
-            if any(k in title.lower() for k in ["padres", "san diego", "miller tipping", "chourio"]):
-                padres_stories.append({"title": title, "link": link, "image": PADRES_LOGO})
+            if is_padres_headline(title):
+                if title not in seen_padres_titles:
+                    seen_padres_titles.add(title)
+                    padres_stories.append({"title": title, "link": link, "image": PADRES_LOGO})
             else:
-                mlb_stories.append({"title": title, "link": link, "image": MLB_LOGO})
+                if title not in seen_mlb_titles:
+                    seen_mlb_titles.add(title)
+                    mlb_stories.append({"title": title, "link": link, "image": MLB_LOGO})
     except Exception as e:
-        print(f"Notice querying MLB.com feed: {e}")
+        print(f"Tier 1 MLB.com feed notice: {e}")
 
+    # Query MLB.com official team content API directly for team beat articles (e.g. AJ Cassavell)
+    try:
+        api_url = "https://statsapi.mlb.com/api/v1/teams/135?hydrate=news(limit=10)"
+        req_api = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = urllib.request.urlopen(req_api, timeout=6)
+        data = json.loads(resp.read().decode('utf-8'))
+        articles = data.get("teams", [{}])[0].get("news", {}).get("articles", [])
+        for art in articles:
+            t = art.get("headline") or art.get("title") or ""
+            link = art.get("url") or "https://www.mlb.com/padres/news"
+            if t and t not in seen_padres_titles and len(padres_stories) < 5:
+                seen_padres_titles.add(t)
+                padres_stories.append({"title": t, "link": link, "image": PADRES_LOGO})
+    except Exception as e:
+        print(f"Tier 1 MLB team content API notice: {e}")
+
+    # --- TIER 2: MLB Trade Rumors Padres (Top 2 fallback) ---
     if len(padres_stories) < 5:
-        extra_padres = fetch_rss_items("https://www.gaslampball.com/rss/index.xml", limit=5, category="padres")
-        padres_stories.extend(extra_padres)
+        traderumors_padres = fetch_rss_items("https://www.mlbtraderumors.com/san-diego-padres/feed", limit=4, category="padres")
+        added_tr = 0
+        for item in traderumors_padres:
+            if item["title"] not in seen_padres_titles:
+                seen_padres_titles.add(item["title"])
+                padres_stories.append(item)
+                added_tr += 1
+                if added_tr >= 2 or len(padres_stories) >= 5:
+                    break
+
+    # --- TIER 3: Gaslamp Ball (Last-resort backfill to 5 items) ---
+    if len(padres_stories) < 5:
+        gaslamp = fetch_rss_items("https://www.gaslampball.com/rss/index.xml", limit=5, category="padres")
+        for item in gaslamp:
+            if item["title"] not in seen_padres_titles:
+                seen_padres_titles.add(item["title"])
+                padres_stories.append(item)
+                if len(padres_stories) >= 5:
+                    break
+
+    # If general MLB stories were light from front page, supplement from MLBTR
+    if len(mlb_stories) < 5:
+        supp_mlb = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=8, category="mlb")
+        for item in supp_mlb:
+            if not is_padres_headline(item["title"]) and item["title"] not in seen_mlb_titles:
+                seen_mlb_titles.add(item["title"])
+                mlb_stories.append(item)
+                if len(mlb_stories) >= 5:
+                    break
 
     return padres_stories[:5], mlb_stories[:5]
 
 def get_sorted_ticker_quotes(tickers):
-    """Pulls prices, appends analysis URLs, and sorts descending by performance."""
     data_list = []
     for ticker in tickers:
         url = get_financial_url(ticker)
@@ -178,8 +242,10 @@ def run_agent():
         sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
     sd_local_news = sd_local_news[:5]
 
-    padres_articles, other_mlb = fetch_mlb_com_feed()
+    # Run waterfall collector
+    padres_articles, other_mlb = fetch_padres_and_mlb_stories()
 
+    # AI & Big Tech feeds
     rundown_ai = fetch_rss_items("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", limit=4, category="ai")
     tc_ai = fetch_rss_items("https://techcrunch.com/category/artificial-intelligence/feed/", limit=4, category="ai")
     msft_news = fetch_rss_items("https://blogs.microsoft.com/feed/", limit=4, category="ai")
@@ -198,7 +264,7 @@ def run_agent():
         if len(ai_tech_items) >= 10:
             break
 
-    print("Fetching sorted market quotes with clickable URLs...")
+    print("Fetching sorted market quotes...")
     sorted_holdings = get_sorted_ticker_quotes(HOLDINGS)
     sorted_watchlist = get_sorted_ticker_quotes(WATCHLIST)
 
@@ -252,7 +318,7 @@ async function updatePadresBox() {
     const res = await fetch('https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore,probablePitcher');
     const data = await res.json();
     if (!data.dates || data.dates.length === 0 || data.dates[0].games.length === 0) {
-      box.innerHTML = '⚾ <strong>Padres:</strong> No game scheduled today.';
+      box.innerHTML = '⚾ <strong>Padres:</strong> Offseason / No game scheduled today.';
       return;
     }
     const game = data.dates[0].games[0];
@@ -302,22 +368,24 @@ setInterval(updatePadresBox, 30000);
         "         Display 50x50 thumbnail using the Padres SD logo. Title must be a clickable link: <a href=\"URL\" target=\"_blank\" style=\"font-size:15px; font-weight:600; color:#0f172a; text-decoration:none;\">Title</a>.\n"
         "       - 'LEAGUE-WIDE MLB STORIES (TOP 5)': Render all 5 items from data: " + str(other_mlb) + " with 50x50 MLB logo and clickable links.\n"
         "     * BOX B: 'Executive News (World & San Diego)'\n"
-        "       - 'TOP 5 WORLD HEADLINES': 5 items from data: " + str(world_news) + " with 50x50 thumbnail and clickable title.\n"
-        "       - 'TOP 5 SAN DIEGO LOCAL NEWS': 5 items from data: " + str(sd_local_news) + " with 50x50 thumbnail and clickable title.\n"
+        "       - 'TOP 5 WORLD HEADLINES': 5 items from data: " + str(world_news) + " with 50x50 thumbnail and clickable title (15px font).\n"
+        "       - 'TOP 5 SAN DIEGO LOCAL NEWS': 5 items from data: " + str(sd_local_news) + " with 50x50 thumbnail and clickable title (15px font).\n"
         "   - BOTTOM SECTION: 'AI, Big Tech & Enterprise M&A'\n"
         "     * Responsive 2-column card grid of exactly 10 items from data: " + str(ai_tech_items) + "\n"
         "     * Include 54x54 thumbnail, clickable title (15px font). Highlight acquisitions or enterprise additions. Title is the direct hyperlink.\n\n"
         "3. RIGHT COLUMN (WIDTH: 330px): 'Portfolio Pulse' & 'Watchlist Catalyst Radar'\n"
         "   - 'Portfolio Pulse' (Top-Right):\n"
-        "     * Sorted data: " + str(sorted_holdings) + "\n"
-        "     * CRITICAL REQUIREMENT: Wrap EVERY single stock row in an HTML hyperlink `<a href=\"item.url\" target=\"_blank\">...</a>` so the entire row is clickable.\n"
-        "     * Row styling: `display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; text-decoration: none; color: inherit; transition: background 0.15s;` and on `:hover { background: #f8fafc; }`.\n"
-        "     * Show Ticker (bold, #0f172a), Price (#334155), and the colored % badge (+ green, - red).\n"
-        "     * Highest positive percentage performers at the very top, descending down to negative performers at the bottom. No internal scrollbars.\n"
-        "   - 'Watchlist Catalyst Radar':\n"
-        "     * Sorted data: " + str(sorted_watchlist) + "\n"
-        "     * Wrap each watchlist ticker in `<a href=\"item.url\" target=\"_blank\">...</a>` linking directly to its catalyst feed.\n"
-        "     * Display quote badge and 1-sentence actionable catalyst below each ticker.\n\n"
+        "     * RENDER IN EXACT DESCENDING ORDER FROM THE SORTED LIST: " + str(sorted_holdings) + "\n"
+        "     * Wrap EVERY stock row in an HTML hyperlink <a href=\"item.url\" target=\"_blank\">...</a>.\n"
+        "     * Row styling: display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; text-decoration: none; color: inherit; transition: background 0.15s; and on hover { background: #f8fafc; }.\n"
+        "     * Show Ticker (bold, #0f172a), Price (#334155), and colored % badge (+ green, - red).\n"
+        "     * Highest positive percentage performers at the very top, descending to negative performers at the bottom. No internal scrollbars.\n"
+        "   - 'Watchlist Catalyst Radar' (Directly below Portfolio Pulse):\n"
+        "     * RENDER IN EXACT DESCENDING ORDER FROM THE SORTED LIST: " + str(sorted_watchlist) + "\n"
+        "     * Wrap EVERY SINGLE watchlist item container inside an HTML hyperlink: <a href=\"item.url\" target=\"_blank\" style=\"display: block; padding: 8px 10px; margin-bottom: 8px; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; color: inherit; transition: all 0.15s ease-in-out; background: #ffffff;\">...</a>\n"
+        "     * Card hover state: on hover { background: #f8fafc; border-color: #cbd5e1; transform: translateY(-1px); }\n"
+        "     * Inside each link card: Top row with Ticker (bold, 15px), Price, and colored % badge (+ green, - red). Below that, a 1-sentence actionable catalyst summary (13px, color: #475569).\n"
+        "     * Do not use internal scrollbars. Completely clickable.\n\n"
         "Before closing </body> tag, insert marker [[WEATHER_AND_PADRES_JS]].\n"
         "Return ONLY clean raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."
     )
