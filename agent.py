@@ -3,7 +3,6 @@ import re
 import time
 import urllib.request
 import json
-import base64
 import feedparser
 import yfinance as yf
 from datetime import datetime, timezone, timedelta
@@ -20,22 +19,21 @@ HOLDINGS = [
 ]
 
 WATCHLIST = ["USAR", "ISRG", "LMT", "TMO", "MU", "WDC", "CSCO", "VRT", "AVGO"]
-
 DISCOVERY_TICKERS = ["RTX", "NOC", "GD", "BA"]
 
 ENTITY_MAP = {
     "PLTR": ["palantir"],
     "MSFT": ["microsoft"],
     "NVDA": ["nvidia"],
-    "AMZN": ["amazon", "amazon web services", "aws"],
+    "AMZN": ["amazon", "aws"],
     "EQIX": ["equinix"],
     "LMT": ["lockheed martin", "lockheed"],
-    "USAR": ["usa rare earth", "round top"],
+    "USAR": ["usa rare earth"],
     "VRT": ["vertiv"],
     "AVGO": ["broadcom"],
     "MU": ["micron"],
     "CSCO": ["cisco"],
-    "RTX": ["raytheon", "rtx corp"],
+    "RTX": ["raytheon", "rtx"],
     "NOC": ["northrop grumman", "northrop"],
     "GD": ["general dynamics"]
 }
@@ -108,12 +106,12 @@ def scrape_mlb_front_page():
     padres_articles = []
     mlb_articles = []
     seen = set()
-    urls_to_scrape = [
+    urls = [
         "https://www.mlb.com",
         "https://www.mlb.com/padres",
         "https://www.mlb.com/padres/news"
     ]
-    for page_url in urls_to_scrape:
+    for page_url in urls:
         try:
             req = urllib.request.Request(page_url, headers={"User-Agent": "Mozilla/5.0"})
             html = urllib.request.urlopen(req, timeout=10).read().decode("utf-8", errors="ignore")
@@ -135,12 +133,12 @@ def scrape_mlb_front_page():
     return padres_articles, mlb_articles
 
 def fetch_padres_and_mlb_stories():
-    padres_mlb_scraped, mlb_stories = scrape_mlb_front_page()
+    padres_scraped, mlb_stories = scrape_mlb_front_page()
     padres_final = []
-    seen_padres_titles = set()
-    for item in padres_mlb_scraped:
-        if item["title"] not in seen_padres_titles:
-            seen_padres_titles.add(item["title"])
+    seen_padres = set()
+    for item in padres_scraped:
+        if item["title"] not in seen_padres:
+            seen_padres.add(item["title"])
             padres_final.append(item)
             if len(padres_final) == 2:
                 break
@@ -150,31 +148,31 @@ def fetch_padres_and_mlb_stories():
     for item in tr_items:
         if len(padres_final) >= 5:
             break
-        if item["title"] in seen_padres_titles:
+        if item["title"] in seen_padres:
             continue
         pub_parsed = item.get("published_parsed")
         if pub_parsed:
             try:
                 pub_dt = datetime(*pub_parsed[:6], tzinfo=timezone.utc)
                 if pub_dt >= two_days_ago:
-                    seen_padres_titles.add(item["title"])
+                    seen_padres.add(item["title"])
                     padres_final.append(item)
             except Exception:
                 pass
     if len(padres_final) < 5:
-        gaslamp_items = fetch_rss_items("https://gaslampball.com/rss/index.xml", limit=8, category="padres")
-        for item in gaslamp_items:
+        gaslamp = fetch_rss_items("https://gaslampball.com/rss/index.xml", limit=8, category="padres")
+        for item in gaslamp:
             if len(padres_final) >= 5:
                 break
-            if item["title"] not in seen_padres_titles:
-                seen_padres_titles.add(item["title"])
+            if item["title"] not in seen_padres:
+                seen_padres.add(item["title"])
                 padres_final.append(item)
-    seen_mlb_titles = {m["title"] for m in mlb_stories}
+    seen_mlb = {m["title"] for m in mlb_stories}
     if len(mlb_stories) < 5:
         supp_mlb = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=8, category="mlb")
         for item in supp_mlb:
-            if not is_padres_related(item["title"]) and item["title"] not in seen_mlb_titles:
-                seen_mlb_titles.add(item["title"])
+            if not is_padres_related(item["title"]) and item["title"] not in seen_mlb:
+                seen_mlb.add(item["title"])
                 mlb_stories.append(item)
                 if len(mlb_stories) >= 5:
                     break
@@ -188,7 +186,7 @@ def evaluate_high_conviction_catalysts():
         "type": "DoD Defense Procurement Award",
         "vol_ratio": "3.2x",
         "pct": "+6.85%",
-        "summary": "APEX Systems awarded $485M multi-year contract for Next-Gen Tactical Edge Sensor Arrays. Institutional volume running 3.2x above 20-day average.",
+        "summary": "APEX Systems awarded $485M multi-year contract for Tactical Edge Sensor Arrays. Volume running 3.2x above 20-day average.",
         "url": "https://finance.yahoo.com"
     })
     dod_text = ""
@@ -214,19 +212,19 @@ def evaluate_high_conviction_catalysts():
             if len(hist) >= 15:
                 avg_vol = float(hist["Volume"].iloc[:-1].mean())
                 today_vol = float(hist["Volume"].iloc[-1])
-                close_prev = float(hist["Close"].iloc[-2])
-                close_last = float(hist["Close"].iloc[-1])
-                pct_val = ((close_last - close_prev) / close_prev) * 100.0
+                c_prev = float(hist["Close"].iloc[-2])
+                c_last = float(hist["Close"].iloc[-1])
+                pct_val = ((c_last - c_prev) / c_prev) * 100.0
                 vol_ratio = (today_vol / avg_vol) if avg_vol > 0 else 1.0
                 if has_contract and pct_val >= 0:
                     grp = "Current Portfolio" if ticker in HOLDINGS else "Active Watchlist"
                     signals.append({
                         "ticker": ticker,
                         "group": grp,
-                        "type": "DoD Procurement / Contract Award",
+                        "type": "DoD Procurement Award",
                         "vol_ratio": f"{vol_ratio:.1f}x",
                         "pct": f"{pct_val:+.2f}%",
-                        "summary": "Confirmed major federal award identified. Relative volume tracking at " + f"{vol_ratio:.1f}x average.",
+                        "summary": "Confirmed federal contract award identified. Volume at " + f"{vol_ratio:.1f}x average.",
                         "url": get_financial_url(ticker)
                     })
         except Exception:
@@ -297,47 +295,91 @@ def get_available_flash_models():
         preferred = ["gemini-3.8-flash", "gemini-3-flash-preview"]
     return preferred
 
-def get_client_js():
-    b64_js = (
-        "PHNjcmlwdD4KYXN5bmMgZnVuY3Rpb24gdXBkYXRlV2VhdGhlcigpIHsKICBjb25zdCBjb250"
-        "YWluZXIgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnd2VhdGhlci1mb3JlY2FzdC1saXN0"
-        "Jyk7CiAgaWYgKCFjb250YWluZXIpIHJldHVybjsKICB0cnkgewogICAgY29uc3QgcmVzID0g"
-        "YXdhaXQgZmV0Y2goJ2h0dHBzOi8vYXBpLm9wZW4tbWV0ZW8uY29tL3YxL2ZvcmVjYXN0P2xh"
-        "dGl0dWRlPTMyLjc0NDgmbG9uZ2l0dWRlPS0xMTYuOTk4OSZkYWlseT13ZWF0aGVyY29kZSx0"
-        "ZW1wZXJhdHVyZV8ybV9tYXgsdGVtcGVyYXR1cmVfMm1fbWluJnRlbXBlcmF0dXJlX3VuaXQ9"
-        "ZmFocmVuaGVpdCZ0aW1lem9uZT1BbWVyaWNhJTJGTG9zX0FuZ2VsZXMmZm9yZWNhc3RfZGF5"
-        "cz0xNCcpOwogICAgY29uc3QgZGF0YSA9IGF3YWl0IHJlcy5qc29uKCk7CiAgICBpZiAoIWRh"
-        "dGEuZGFpbHkgfHwgIWRhdGEuZGFpbHkudGltZSkgcmV0dXJuOwogICAgbGV0IGh0bWwgPSAn"
-        "JzsKICAgIGNvbnN0IGNvZGVzID0gewogICAgICAwOiAn4piA77iPIENsZWFyJywgMTogJ/Cf"
-        "jKQl77iPIENsZWFyJywgMjogJ/CfjKUgUHQgQ2xvdWR5JywgMzogJ+KYge+4jyBPdmVyY2Fz"
-        "dCcsCiAgICAgIDQ1OiAn8J+MqyBGb2cnLCA0ODogJ/CfjKsgRm9nJywgNTE6ICfwn4ym77iP"
-        "IERyaXp6bGUnLCA2MTogJ/CfjKfl77iPIFJhaW4nLCA4MDogJ/CfjKbvuI8gU2hvd2Vycycs"
-        "IDk1OiAn4pvI77iPIFN0b3JtJwogICAgfTsKICAgIGZvciAobGV0IGkgPSAwOyBpIDwgZGF0"
-        "YS5kYWlseS50aW1lLmxlbmd0aDsgaSsrKSB7CiAgICAgIGNvbnN0IGRhdGVTdHIgPSBkYXRh"
-        "LmRhaWx5LnRpbWVbaV07CiAgICAgIGNvbnN0IGQgPSBuZXcgRGF0ZShkYXRlU3RyICsgJ1Qx"
-        "MjowMDowMCcpOwogICAgICBjb25zdCBkYXlOYW1lID0gaSA9PT0gMCA/ICdUb2RheScgOiBk"
-        "LnRvTG9jYWxlRGF0ZVN0cmluZygnZW4tVVMnLCB7IHdlZWtkYXk6ICdzaG9ydCcgfSk7CiAg"
-        "ICAgIGNvbnN0IG1vbnRoRGF5ID0gKGQubW9udGgoKSArIDEpICsgJy8nICsgZC5nZXREYXRl"
-        "KCk7CiAgICAgIGNvbnN0IG1heCA9IE1hdGgucm91bmQoZGF0YS5kYWlseS50ZW1wZXJhdHVy"
-        "ZV8ybV9tYXhbaV0pOwogICAgICBjb25zdCBtaW4gPSBNYXRoLnJvdW5kKGRhdGEuZGFpbHku"
-        "dGVtcGVyYXR1cmVfMm1fbWluW2ldKTsKICAgICAgY29uc3QgY29kZSA9IGRhdGEuZGFpbHku"
-        "d2VhdGhlcmNvZGVbaV07CiAgICAgIGNvbnN0IGRlc2MgPSBjb2Rlc1tjb2RlXSB8fCAn8J+M"
-        "pCUgRmFpcic7CiAgICAgIGh0bWwgKz0gYAogICAgICAgIDxkaXYgc3R5bGU9ImRpc3BsYXk6"
-        "ZmxleDsganVzdGlmeS1jb250ZW50OnNwYWNlLWJldHdlZW47IGFsaWduLWl0ZW1zOmNlbnRl"
-        "cjsgcGFkZGluZzo4cHggNHB4OyBib3JkZXItYm90dG9tOjFweCBzb2xpZCAjZjFmNWY5OyBm"
-        "b250LXNpemU6MTRweDsiPgogICAgICAgICAgPGRpdiBzdHlsZT0iZGlzcGxheTpmbGV4OyBm"
-        "bGV4LWRpcmVjdGlvjpjb2x1bW47Ij4KICAgICAgICAgICAgPHNwYW4gc3R5bGU9ImZvbnQt"
-        "d2VpZ2h0OjcwMDsgY29sb3I6IzFlMjkzYjsgZm9udC1zaXplOjE0cHg7Ij4ke2RheU5hbWV9"
-        "PC9zcGFuPgogICAgICAgICAgICA8c3BhbiBzdHlsZT0iZm9udC1zaXplOjExcHg7IGNvbG9y"
-        "OiM5NGEzYjg7Ij4ke21vbnRoRGF5fTwvc3Bhbj4KICAgICAgICAgIDwvZGl2PgogICAgICAg"
-        "ICAgPHNwYW4gc3R5bGU9ImNvbG9yOiM2NDc0OGI7IGZvbnQtc2l6ZToxM3B4OyBmbGV4OjE7"
-        "IHRleHQtYWxpZ246Y2VudGVyOyI+JHtkZXNjfTwvc3Bhbj4KICAgICAgICAgIDxzcGFuIHN0"
-        "eWxlPSJmb250LXdlaWdodDo3MDA7IGNvbG9yOiMwZjE3MmE7IGZvbnQtc2l6ZToxNHB4OyI+"
-        "JHttYXh9wqAgPHNwYW4gc3R5bGU9ImZvbnQtd2VpZ2h0OjQwMDsgY29sb3I6Izk0YTNiODsg"
-        "Zm9udC1zaXplOjEycHg7Ij4vICR7bWlufcKwPC9zcGFuPjwvc3Bhbj4KICAgICAgICA8L2Rp"
-        "dj4KICAgICAgYDsgCiAgICB9CiAgICBjb250YWluZXIuaW5uZXJIVE1MID0gaHRtbDsKICB9"
-        "IGNhdGNoIChlKSB7CiAgICBjb250YWluZXIuaW5uZXJIVE1MID0gJzxkaXYgc3R5bGU9ImZv"
-        "bnQtc2l6ZToxM3B4OyBjb2xvcjojOTRhM2I4OyI+V2VhdGhlciBzeW5jaW5nLi4uPC9kaXY+"
-        "JzsKICB9Cn0KCmFzeW5jIGZ1bmN0aW9uIHVwZGF0ZVBhZHJlc0JveCgpIHsKICBjb25zdCBi"
-        "b3ggPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncGFkcmVzLWxpdmUtYm94Jyk7CiAgaWYg"
-        "KCFib3gpIHJldHVybjsKICB0cnkgewogICAgY29uc3Qgcm
+def build_client_javascript():
+    js_parts = [
+        "<script>",
+        "async function updateWeather() {",
+        "  const container = document.getElementById('weather-forecast-list');",
+        "  if (!container) return;",
+        "  try {",
+        "    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=14');",
+        "    const data = await res.json();",
+        "    if (!data.daily || !data.daily.time) return;",
+        "    let html = '';",
+        "    const codes = {0:'Clear', 1:'Clear', 2:'Pt Cloudy', 3:'Overcast', 45:'Fog', 51:'Drizzle', 61:'Rain', 80:'Showers', 95:'Storm'};",
+        "    for (let i = 0; i < data.daily.time.length; i++) {",
+        "      const d = new Date(data.daily.time[i] + 'T12:00:00');",
+        "      const dayName = i === 0 ? 'Today' : d.toLocaleDateString('en-US', {weekday:'short'});",
+        "      const monthDay = (d.getMonth() + 1) + '/' + d.getDate();",
+        "      const max = Math.round(data.daily.temperature_2m_max[i]);",
+        "      const min = Math.round(data.daily.temperature_2m_min[i]);",
+        "      const desc = codes[data.daily.weathercode[i]] || 'Fair';",
+        "      html += '<div style=\"display:flex; justify-content:space-between; align-items:center; padding:8px 4px; border-bottom:1px solid #f1f5f9; font-size:14px;\">';",
+        "      html += '<div style=\"display:flex; flex-direction:column;\"><span style=\"font-weight:700; color:#1e293b;\">' + dayName + '</span><span style=\"font-size:11px; color:#94a3b8;\">' + monthDay + '</span></div>';",
+        "      html += '<span style=\"color:#64748b; font-size:13px;\">' + desc + '</span>';",
+        "      html += '<span style=\"font-weight:700; color:#0f172a;\">' + max + '° <span style=\"font-weight:400; color:#94a3b8; font-size:12px;\">/ ' + min + '°</span></span></div>';",
+        "    }",
+        "    container.innerHTML = html;",
+        "  } catch (e) { container.innerHTML = '<div style=\"color:#94a3b8;\">Weather feed syncing...</div>'; }",
+        "}",
+        "async function updatePadresBox() {",
+        "  const box = document.getElementById('padres-live-box');",
+        "  if (!box) return;",
+        "  try {",
+        "    const res = await fetch('https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore,probablePitcher');",
+        "    const data = await res.json();",
+        "    if (!data.dates || data.dates.length === 0 || data.dates[0].games.length === 0) {",
+        "      box.innerHTML = '⚾ <strong>Padres:</strong> Offseason / No game scheduled today.';",
+        "      return;",
+        "    }",
+        "    const game = data.dates[0].games[0];",
+        "    const status = game.status.abstractGameState;",
+        "    const away = game.teams.away.team.name;",
+        "    const home = game.teams.home.team.name;",
+        "    const awayScore = game.teams.away.score != null ? game.teams.away.score : 0;",
+        "    const homeScore = game.teams.home.score != null ? game.teams.home.score : 0;",
+        "    if (status === 'Live') {",
+        "      const inn = game.linescore ? (game.linescore.inningState + ' ' + game.linescore.currentInningOrdinal) : 'Live';",
+        "      box.innerHTML = '🔴 <span style=\"color:#dc2626; font-weight:700;\">LIVE:</span> ' + away + ' ' + awayScore + ' @ ' + home + ' ' + homeScore + ' (' + inn + ')';",
+        "    } else if (status === 'Final') {",
+        "      box.innerHTML = '🏁 <strong>FINAL:</strong> ' + away + ' ' + awayScore + ' - ' + home + ' ' + homeScore;",
+        "    } else {",
+        "      const gTime = new Date(game.gameDate).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});",
+        "      box.innerHTML = '⚾ <strong>Upcoming:</strong> ' + away + ' @ ' + home + ' - ' + gTime;",
+        "    }",
+        "  } catch (e) { box.innerHTML = '⚾ <strong>Padres:</strong> Live box feed standby.'; }",
+        "}",
+        "updateWeather();",
+        "updatePadresBox();",
+        "setInterval(updatePadresBox, 30000);",
+        "</script>"
+    ]
+    return "\n".join(js_parts)
+
+def run_agent():
+    print("Collecting news feeds...")
+    world_news = fetch_rss_items("https://feeds.bbci.co.uk/news/world/rss.xml", limit=5, category="general")
+    sd_local_news = fetch_rss_items("https://www.cbs8.com/feeds/syndication/rss/news/local", limit=6, category="general")
+    if len(sd_local_news) < 5:
+        sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
+    sd_local_news = sd_local_news[:5]
+
+    print("Executing Padres 5-spot pipeline...")
+    padres_articles, other_mlb = fetch_padres_and_mlb_stories()
+
+    rundown_ai = fetch_rss_items("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", limit=4, category="ai")
+    tc_ai = fetch_rss_items("https://techcrunch.com/category/artificial-intelligence/feed/", limit=4, category="ai")
+    msft_news = fetch_rss_items("https://blogs.microsoft.com/feed/", limit=4, category="ai")
+    apple_news = fetch_rss_items("https://9to5mac.com/feed/", limit=4, category="ai")
+    ars_tech = fetch_rss_items("https://feeds.arstechnica.com/arstechnica/technologylab", limit=4, category="ai")
+
+    all_ai = rundown_ai + tc_ai + msft_news + apple_news + ars_tech
+    seen_tech = set()
+    ai_tech_items = []
+    for item in all_ai:
+        if item["title"] not in seen_tech:
+            seen_tech.add(item["title"])
+            if not item.get("image"):
+                item["image"] = TECH_LOGO
+            ai_tech_items.append(item)
+        if len(ai_tech_
