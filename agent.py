@@ -3,7 +3,6 @@ import re
 import time
 import urllib.request
 import json
-import base64
 import feedparser
 import yfinance as yf
 from datetime import datetime, timezone, timedelta
@@ -220,25 +219,72 @@ def get_available_flash_models():
     return preferred
 
 def get_js():
-    b64_script = (
-        "PHNjcmlwdD4KYXN5bmMgZnVuY3Rpb24gdXBkYXRlV2VhdGhlcigpIHsKICBjb25zdCBjID0g"
-        "ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3dlYXRoZXItZm9yZWNhc3QtbGlzdCcpOwogIGlm"
-        "ICghYykgcmV0dXJuOwogIHRyeSB7CiAgICBjb25zdCByID0gYXdhaXQgZmV0Y2goJ2h0dHBz"
-        "Oi8vYXBpLm9wZW4tbWV0ZW8uY29tL3YxL2ZvcmVjYXN0P2xhdGl0dWRlPTMyLjc0NDgmbG9u"
-        "Z2l0dWRlPS0xMTYuOTk4OSZkYWlseT13ZWF0aGVyY29kZSx0ZW1wZXJhdHVyZV8ybV9tYXgs"
-        "dGVtcGVyYXR1cmVfMm1fbWluJnRlbXBlcmF0dXJlX3VuaXQ9ZmFocmVuaGVpdCZ0aW1lem9u"
-        "ZT1BbWVyaWNhJTJGTG9zX0FuZ2VsZXMmZm9yZWNhc3RfZGF5cz0xNCcpOwogICAgY29uc3Qg"
-        "ZCA9IGF3YWl0IHIuanNvbigpOwogICAgbGV0IGggPSAnJzsKICAgIGNvbnN0IGNvZGVzID0g"
-        "ezA6J+KYgCBDbGVhcicsIDE6J/CfjKQgQ2xlYXInLCAyOifwn4ylIFB0IENsb3VkeScsIDM6"
-        "J+KYge+4jyBPdmVyY2FzdCcsIDQ1Oifwn4yrIEZvZycsIDUxOifwn4ymIERyaXp6bGUnLCA2"
-        "MTon8J+MpyBSYWluJywgODA6J/CfjKYgU2hvd2VycycsIDk1Oifim8ggU3Rvcm0nfTsKICAg"
-        "IGZvciAobGV0IGkgPSAwOyBpIDwgZC5kYWlseS50aW1lLmxlbmd0aDsgaSsrKSB7CiAgICAg"
-        "IGNvbnN0IGR0ID0gbmV3IERhdGUoZC5kYWlseS50aW1lW2ldICsgJ1QxMjowMDowMCcpOwog"
-        "ICAgICBjb25zdCBkYXkgPSBpID09PSAwID8gJ1RvZGF5JyA6IGR0LnRvTG9jYWxlRGF0ZVN0"
-        "cmluZygndW4tVVMnLCB7d2Vla2RheTonc2hvcnQnfSk7CiAgICAgIGNvbnN0IG1kID0gKGR0"
-        "LmdldE1vbnRoKCkgKyAxKSArICcvJyArIGR0LmdldERhdGUoKTsKICAgICAgY29uc3QgbWF4"
-        "ID0gTWF0aC5yb3VuZChkLmRhaWx5LnRlbXBlcmF0dXJlXzJtX21heFtpXSk7CiAgICAgIGNv"
-        "bnN0IG1pbiA9IE1hdGgucm91bmQoZC5kYWlseS50ZW1wZXJhdHVyZV8ybV9taW5baV0pOwog"
-        "ICAgICBjb25zdCBkZXNjID0gY29kZXNbZC5kYWlseS53ZWF0aGVyY29kZVtpaV0gfHwgJ/Cf"
-        "jKQgRmFpcic7CiAgICAgIGggKz0gJzxkaXYgc3R5bGU9ImRpc3BsYXk6ZmxleDtqdXN0aWZ5"
-        "LWNvbnRlbnQ6c3BhY2UtYmV0d2V
+    lines = [
+        "<script>",
+        "async function updateWeather() {",
+        "  const c = document.getElementById('weather-forecast-list');",
+        "  if (!c) return;",
+        "  try {",
+        "    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=14');",
+        "    const d = await r.json();",
+        "    let h = '';",
+        "    const codes = {0:'\u2600\ufe0f Clear', 1:'\ud83c\udf24\ufe0f Clear', 2:'\u26c5 Pt Cloudy', 3:'\u2601\ufe0f Overcast', 45:'\ud83c\udf2b Fog', 48:'\ud83c\udf2b Fog', 51:'\ud83c\udf26\ufe0f Drizzle', 61:'\ud83c\udf27\ufe0f Rain', 80:'\ud83c\udf26\ufe0f Showers', 95:'\u26c8\ufe0f Storm'};",
+        "    for (let i = 0; i < d.daily.time.length; i++) {",
+        "      const dt = new Date(d.daily.time[i] + 'T12:00:00');",
+        "      const day = i === 0 ? 'Today' : dt.toLocaleDateString('en-US', {weekday:'short'});",
+        "      const md = (dt.getMonth() + 1) + '/' + dt.getDate();",
+        "      const max = Math.round(d.daily.temperature_2m_max[i]);",
+        "      const min = Math.round(d.daily.temperature_2m_min[i]);",
+        "      const desc = codes[d.daily.weathercode[i]] || '\ud83c\udf24\ufe0f Fair';",
+        "      h += '<div style=\"display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #f1f5f9;font-size:14px;\"><div><strong>' + day + '</strong> <span style=\"font-size:11px;color:#94a3b8;\">' + md + '</span></div><span style=\"color:#64748b;font-size:13px;\">' + desc + '</span><strong>' + max + '\u00b0 <span style=\"font-weight:400;color:#94a3b8;font-size:12px;\">/ ' + min + '\u00b0</span></strong></div>';",
+        "    }",
+        "    c.innerHTML = h;",
+        "  } catch (e) { c.innerHTML = '<div style=\"color:#94a3b8;\">Weather syncing...</div>'; }",
+        "}",
+        "async function updatePadres() {",
+        "  const b = document.getElementById('padres-live-box');",
+        "  if (!b) return;",
+        "  try {",
+        "    const r = await fetch('https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore');",
+        "    const d = await r.json();",
+        "    if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {",
+        "      b.innerHTML = '\u26be <strong>Padres:</strong> Offseason / No game scheduled today.';",
+        "      return;",
+        "    }",
+        "    const g = d.dates[0].games[0];",
+        "    const s = g.status.abstractGameState;",
+        "    const a = g.teams.away.team.name, h = g.teams.home.team.name;",
+        "    const as = g.teams.away.score || 0, hs = g.teams.home.score || 0;",
+        "    if (s === 'Live') {",
+        "      b.innerHTML = '\ud83d\udd34 <span style=\"color:#dc2626;font-weight:700;\">LIVE:</span> ' + a + ' ' + as + ' @ ' + h + ' ' + hs;",
+        "    } else if (s === 'Final') {",
+        "      b.innerHTML = '\ud83c\udfc1 <strong>FINAL:</strong> ' + a + ' ' + as + ' - ' + h + ' ' + hs;",
+        "    } else {",
+        "      b.innerHTML = '\u26be <strong>Upcoming:</strong> ' + a + ' @ ' + h;",
+        "    }",
+        "  } catch (e) { b.innerHTML = 'Padres live feed standby.'; }",
+        "}",
+        "updateWeather();",
+        "updatePadres();",
+        "setInterval(updatePadres, 30000);",
+        "</script>"
+    ]
+    return "\n".join(lines)
+
+def run_agent():
+    print("Collecting news feeds...")
+    world = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
+    sd = fetch_rss("https://www.cbs8.com/feeds/syndication/rss/news/local", 5)
+    padres, mlb = fetch_padres_stories()
+    ai = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 10, "ai")
+
+    print("Scanning high-conviction catalysts & federal procurement...")
+    catalysts = get_catalyst_alerts()
+    print("Detected active signals:", len(catalysts))
+
+    holdings = get_quotes(HOLDINGS)
+    watchlist = get_quotes(WATCHLIST)
+
+    prompt = (
+        "Generate a single HTML dashboard document.\n"
+        "PAGE STYLING: Background: #f1f5f9; Cards: #ffffff; Border: 1px solid #e2e8f0; Border-radius: 12px; Padding: 18px; Layout: width 98vw; max-width: 1820px; margin: 0 auto; Start at
