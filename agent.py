@@ -202,7 +202,7 @@ def fetch_padres_and_mlb_stories():
 def evaluate_high_conviction_catalysts():
     signals = []
     
-    # Synthetic test stock for visual verification
+    # Test catalyst injected for visual design review
     signals.append({
         "ticker": "APEX",
         "group": "Active Watchlist",
@@ -240,21 +240,4 @@ def evaluate_high_conviction_catalysts():
             if len(hist) >= 15:
                 avg_vol = float(hist['Volume'][:-1].mean())
                 today_vol = float(hist['Volume'].iloc[-1])
-                pct_change = float(((hist['Close'].iloc[-1] - hist['Close'].iloc[-2]) / hist['Close'].iloc[-2]) * 100)
-                vol_ratio = (today_vol / avg_vol) if avg_vol > 0 else 1.0
-
-                if has_contract and pct_change >= 0:
-                    group = "Current Portfolio" if ticker in HOLDINGS else ("Active Watchlist" if ticker in WATCHLIST else "Discovery Opportunity")
-                    signals.append({
-                        "ticker": ticker,
-                        "group": group,
-                        "type": "DoD Procurement / Contract Award",
-                        "vol_ratio": f"{vol_ratio:.1f}x",
-                        "pct": f"{pct_change:+.2f}%",
-                        "summary": f"Confirmed major federal defense award or contract modification identified. Relative volume tracking at {vol_ratio:.1f}x average.",
-                        "url": get_financial_url(ticker)
-                    })
-                elif vol_ratio >= 1.75 and pct_change >= 2.0:
-                    group = "Current Portfolio" if ticker in HOLDINGS else ("Active Watchlist" if ticker in WATCHLIST else "Discovery Opportunity")
-                    signals.append({
-                        "ticker
+                pct_change = float
