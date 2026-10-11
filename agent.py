@@ -138,6 +138,19 @@ def get_quotes(tickers):
     out.sort(key=lambda x: x["pct_num"], reverse=True)
     return out
 
+def get_available_flash_models():
+    preferred = []
+    try:
+        for m in client.models.list():
+            name = m.name.replace("models/", "")
+            if "flash" in name.lower() and not name.endswith("-exp"):
+                preferred.append(name)
+    except Exception as e:
+        print("Models notice:", str(e))
+    if not preferred:
+        preferred = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    return preferred
+
 def get_js():
     return """
 <script>
@@ -191,6 +204,7 @@ setInterval(updatePadres, 30000);
 """
 
 def run_agent():
+    print("Collecting news feeds...")
     world = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
     sd = fetch_rss("https://www.cbs8.com/feeds/syndication/rss/news/local", 5)
     padres, mlb = fetch_padres_stories()
@@ -201,11 +215,11 @@ def run_agent():
 
     prompt = (
         "Generate a single HTML dashboard document.\n"
-        "PAGE STYLING: Background: #f1f5f9; Cards: #ffffff; Border: 1px solid #e2e8f0; Border-radius: 12px; Padding: 18px; Layout: width 98vw; max-width 1820px; margin: 0 auto; Start at top edge.\n"
+        "PAGE STYLING: Background: #f1f5f9; Cards: #ffffff; Border: 1px solid #e2e8f0; Border-radius: 12px; Padding: 18px; Layout: width 98vw; max-width: 1820px; margin: 0 auto; Start at top edge.\n"
         "CSS KEYFRAME ANIMATION: @keyframes pulse-alert { 0% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); } 50% { border-color:#b91c1c; box-shadow:0 0 18px 5px rgba(239,68,68,0.55); } 100% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); } }\n"
         "EXPANDED CATALYST RADAR ALERT BANNER (TOP OF PAGE):\n"
         "Data: " + str(catalysts) + "\n"
-        "Render a prominent 15% enlarged alert container across full width above the 3 columns: padding 18px 26px; margin-bottom 22px; border-radius 12px; display flex; align-items center; justify-content space-between; background #fff5f5; border 3px solid #ef4444; animation pulse-alert 1.5s infinite;\n"
+        "Render a prominent 15% enlarged alert container across full width above the 3 columns: padding 18px 26px; margin-bottom: 22px; border-radius: 12px; display flex; align-items center; justify-content space-between; background #fff5f5; border 3px solid #ef4444; animation pulse-alert 1.5s infinite;\n"
         "Left side: <span style='background:#dc2626;color:#fff;font-size:14px;font-weight:800;padding:6px 14px;border-radius:6px;text-transform:uppercase;'>🚨 Catalyst Radar Alert</span> <strong style='font-size:20px;color:#991b1b;margin-left:12px;'>APEX</strong> <span style='font-size:15px;color:#b91c1c;'>(DoD Defense Procurement Award)</span> <div style='font-size:15px;color:#1e293b;margin-top:6px;'>APEX Systems awarded $485M multi-year contract for Tactical Edge Sensor Arrays. Volume running 3.2x above 20-day average.</div>\n"
         "Right side: <a href='https://finance.yahoo.com' target='_blank' style='background:#dc2626;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:8px;text-decoration:none;'>Review Filing / Catalyst →</a>\n"
         "THREE COLUMNS:\n"
@@ -215,18 +229,20 @@ def run_agent():
         "Insert marker [[WEATHER_AND_PADRES_JS]] before </body>. Output clean raw HTML without markdown ticks."
     )
 
-    models = ["gemini-3.8-flash", "gemini-3-flash-preview"]
+    models = get_available_flash_models()
     resp = None
     for m in models:
         try:
+            print("Calling model:", m)
             resp = client.models.generate_content(model=m, contents=prompt)
             if resp and resp.text:
                 break
-        except Exception:
-            time.sleep(5)
+        except Exception as err:
+            print("Model retry error:", str(err))
+            time.sleep(4)
 
     if not resp or not resp.text:
-        raise RuntimeError("Generation failed.")
+        raise RuntimeError("Generation failed across all available models.")
 
     html = resp.text.replace("```html", "").replace("```", "").strip()
     js = get_js()
