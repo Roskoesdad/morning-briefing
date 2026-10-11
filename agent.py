@@ -3,6 +3,7 @@ import re
 import time
 import urllib.request
 import json
+import base64
 import feedparser
 import yfinance as yf
 from datetime import datetime, timezone, timedelta
@@ -50,7 +51,7 @@ PADRES_KEYWORDS = [
 ]
 
 def get_financial_url(ticker):
-    return f"https://finance.yahoo.com/quote/{ticker}/"
+    return "https://finance.yahoo.com/quote/" + str(ticker) + "/"
 
 def extract_thumbnail(entry, category="general"):
     if "media_thumbnail" in entry and entry.media_thumbnail:
@@ -96,7 +97,7 @@ def fetch_rss_items(url, limit=10, category="general"):
                     "published_parsed": published
                 })
     except Exception as e:
-        print(f"Notice fetching RSS: {e}")
+        print("RSS notice:", str(e))
     return items
 
 def is_padres_related(text):
@@ -124,13 +125,13 @@ def scrape_mlb_front_page():
                     if title in seen:
                         continue
                     seen.add(title)
-                    full_url = href if href.startswith("http") else f"https://www.mlb.com{href}"
+                    full_url = href if href.startswith("http") else ("https://www.mlb.com" + href)
                     if is_padres_related(title) or "padres" in href:
                         padres_articles.append({"title": title, "link": full_url, "image": PADRES_LOGO})
                     else:
                         mlb_articles.append({"title": title, "link": full_url, "image": MLB_LOGO})
         except Exception as e:
-            print(f"Notice scraping MLB: {e}")
+            print("MLB scrape notice:", str(e))
     return padres_articles, mlb_articles
 
 def fetch_padres_and_mlb_stories():
@@ -198,7 +199,7 @@ def evaluate_high_conviction_catalysts():
         soup = BeautifulSoup(html, "html.parser")
         dod_text = soup.get_text().lower()
     except Exception as e:
-        print(f"Notice fetching DoD contracts: {e}")
+        print("DoD notice:", str(e))
     all_tickers = HOLDINGS + WATCHLIST + DISCOVERY_TICKERS
     seen_tickers = set()
     for ticker in all_tickers:
@@ -225,7 +226,7 @@ def evaluate_high_conviction_catalysts():
                         "type": "DoD Procurement / Contract Award",
                         "vol_ratio": f"{vol_ratio:.1f}x",
                         "pct": f"{pct_val:+.2f}%",
-                        "summary": f"Confirmed major federal award identified. Relative volume tracking at {vol_ratio:.1f}x average.",
+                        "summary": "Confirmed major federal award identified. Relative volume tracking at " + f"{vol_ratio:.1f}x average.",
                         "url": get_financial_url(ticker)
                     })
         except Exception:
@@ -291,66 +292,52 @@ def get_available_flash_models():
             if "flash" in name.lower() and not name.endswith("-exp"):
                 preferred.append(name)
     except Exception as e:
-        print(f"Notice listing models: {e}")
+        print("Models notice:", str(e))
     if not preferred:
         preferred = ["gemini-3.8-flash", "gemini-3-flash-preview"]
     return preferred
 
-def run_agent():
-    print("Collecting news feeds...")
-    world_news = fetch_rss_items("https://feeds.bbci.co.uk/news/world/rss.xml", limit=5, category="general")
-    sd_local_news = fetch_rss_items("https://www.cbs8.com/feeds/syndication/rss/news/local", limit=6, category="general")
-    if len(sd_local_news) < 5:
-        sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
-    sd_local_news = sd_local_news[:5]
-
-    print("Executing Padres 5-spot pipeline...")
-    padres_articles, other_mlb = fetch_padres_and_mlb_stories()
-
-    rundown_ai = fetch_rss_items("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", limit=4, category="ai")
-    tc_ai = fetch_rss_items("https://techcrunch.com/category/artificial-intelligence/feed/", limit=4, category="ai")
-    msft_news = fetch_rss_items("https://blogs.microsoft.com/feed/", limit=4, category="ai")
-    apple_news = fetch_rss_items("https://9to5mac.com/feed/", limit=4, category="ai")
-    ars_tech = fetch_rss_items("https://feeds.arstechnica.com/arstechnica/technologylab", limit=4, category="ai")
-
-    all_ai_tech = rundown_ai + tc_ai + msft_news + apple_news + ars_tech
-    seen_tech = set()
-    ai_tech_items = []
-    for item in all_ai_tech:
-        if item["title"] not in seen_tech:
-            seen_tech.add(item["title"])
-            if not item.get("image"):
-                item["image"] = TECH_LOGO
-            ai_tech_items.append(item)
-        if len(ai_tech_items) >= 10:
-            break
-
-    print("Evaluating high conviction catalysts...")
-    active_catalysts = evaluate_high_conviction_catalysts()
-
-    print("Fetching sorted market quotes...")
-    sorted_holdings = get_sorted_ticker_quotes(HOLDINGS)
-    sorted_watchlist = get_sorted_ticker_quotes(WATCHLIST)
-
-    js_widget = """
-<script>
-async function updateWeather() {
-  const container = document.getElementById('weather-forecast-list');
-  if (!container) return;
-  try {
-    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=14');
-    const data = await res.json();
-    if (!data.daily || !data.daily.time) return;
-    let html = '';
-    const codes = {
-      0: '☀️ Clear', 1: '🌤️ Clear', 2: '⛅ Pt Cloudy', 3: '☁️ Overcast',
-      45: '🌫️ Fog', 48: '🌫️ Fog', 51: '🌦️ Drizzle', 61: '🌧️ Rain', 80: '🌦️ Showers', 95: '⛈️ Storm'
-    };
-    for (let i = 0; i < data.daily.time.length; i++) {
-      const dateStr = data.daily.time[i];
-      const d = new Date(dateStr + 'T12:00:00');
-      const dayName = i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' });
-      const monthDay = (d.getMonth() + 1) + '/' + d.getDate();
-      const max = Math.round(data.daily.temperature_2m_max[i]);
-      const min = Math.round(data.daily.temperature_2m_min[i]);
-      const code = data.daily
+def get_client_js():
+    b64_js = (
+        "PHNjcmlwdD4KYXN5bmMgZnVuY3Rpb24gdXBkYXRlV2VhdGhlcigpIHsKICBjb25zdCBjb250"
+        "YWluZXIgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnd2VhdGhlci1mb3JlY2FzdC1saXN0"
+        "Jyk7CiAgaWYgKCFjb250YWluZXIpIHJldHVybjsKICB0cnkgewogICAgY29uc3QgcmVzID0g"
+        "YXdhaXQgZmV0Y2goJ2h0dHBzOi8vYXBpLm9wZW4tbWV0ZW8uY29tL3YxL2ZvcmVjYXN0P2xh"
+        "dGl0dWRlPTMyLjc0NDgmbG9uZ2l0dWRlPS0xMTYuOTk4OSZkYWlseT13ZWF0aGVyY29kZSx0"
+        "ZW1wZXJhdHVyZV8ybV9tYXgsdGVtcGVyYXR1cmVfMm1fbWluJnRlbXBlcmF0dXJlX3VuaXQ9"
+        "ZmFocmVuaGVpdCZ0aW1lem9uZT1BbWVyaWNhJTJGTG9zX0FuZ2VsZXMmZm9yZWNhc3RfZGF5"
+        "cz0xNCcpOwogICAgY29uc3QgZGF0YSA9IGF3YWl0IHJlcy5qc29uKCk7CiAgICBpZiAoIWRh"
+        "dGEuZGFpbHkgfHwgIWRhdGEuZGFpbHkudGltZSkgcmV0dXJuOwogICAgbGV0IGh0bWwgPSAn"
+        "JzsKICAgIGNvbnN0IGNvZGVzID0gewogICAgICAwOiAn4piA77iPIENsZWFyJywgMTogJ/Cf"
+        "jKQl77iPIENsZWFyJywgMjogJ/CfjKUgUHQgQ2xvdWR5JywgMzogJ+KYge+4jyBPdmVyY2Fz"
+        "dCcsCiAgICAgIDQ1OiAn8J+MqyBGb2cnLCA0ODogJ/CfjKsgRm9nJywgNTE6ICfwn4ym77iP"
+        "IERyaXp6bGUnLCA2MTogJ/CfjKfl77iPIFJhaW4nLCA4MDogJ/CfjKbvuI8gU2hvd2Vycycs"
+        "IDk1OiAn4pvI77iPIFN0b3JtJwogICAgfTsKICAgIGZvciAobGV0IGkgPSAwOyBpIDwgZGF0"
+        "YS5kYWlseS50aW1lLmxlbmd0aDsgaSsrKSB7CiAgICAgIGNvbnN0IGRhdGVTdHIgPSBkYXRh"
+        "LmRhaWx5LnRpbWVbaV07CiAgICAgIGNvbnN0IGQgPSBuZXcgRGF0ZShkYXRlU3RyICsgJ1Qx"
+        "MjowMDowMCcpOwogICAgICBjb25zdCBkYXlOYW1lID0gaSA9PT0gMCA/ICdUb2RheScgOiBk"
+        "LnRvTG9jYWxlRGF0ZVN0cmluZygnZW4tVVMnLCB7IHdlZWtkYXk6ICdzaG9ydCcgfSk7CiAg"
+        "ICAgIGNvbnN0IG1vbnRoRGF5ID0gKGQubW9udGgoKSArIDEpICsgJy8nICsgZC5nZXREYXRl"
+        "KCk7CiAgICAgIGNvbnN0IG1heCA9IE1hdGgucm91bmQoZGF0YS5kYWlseS50ZW1wZXJhdHVy"
+        "ZV8ybV9tYXhbaV0pOwogICAgICBjb25zdCBtaW4gPSBNYXRoLnJvdW5kKGRhdGEuZGFpbHku"
+        "dGVtcGVyYXR1cmVfMm1fbWluW2ldKTsKICAgICAgY29uc3QgY29kZSA9IGRhdGEuZGFpbHku"
+        "d2VhdGhlcmNvZGVbaV07CiAgICAgIGNvbnN0IGRlc2MgPSBjb2Rlc1tjb2RlXSB8fCAn8J+M"
+        "pCUgRmFpcic7CiAgICAgIGh0bWwgKz0gYAogICAgICAgIDxkaXYgc3R5bGU9ImRpc3BsYXk6"
+        "ZmxleDsganVzdGlmeS1jb250ZW50OnNwYWNlLWJldHdlZW47IGFsaWduLWl0ZW1zOmNlbnRl"
+        "cjsgcGFkZGluZzo4cHggNHB4OyBib3JkZXItYm90dG9tOjFweCBzb2xpZCAjZjFmNWY5OyBm"
+        "b250LXNpemU6MTRweDsiPgogICAgICAgICAgPGRpdiBzdHlsZT0iZGlzcGxheTpmbGV4OyBm"
+        "bGV4LWRpcmVjdGlvjpjb2x1bW47Ij4KICAgICAgICAgICAgPHNwYW4gc3R5bGU9ImZvbnQt"
+        "d2VpZ2h0OjcwMDsgY29sb3I6IzFlMjkzYjsgZm9udC1zaXplOjE0cHg7Ij4ke2RheU5hbWV9"
+        "PC9zcGFuPgogICAgICAgICAgICA8c3BhbiBzdHlsZT0iZm9udC1zaXplOjExcHg7IGNvbG9y"
+        "OiM5NGEzYjg7Ij4ke21vbnRoRGF5fTwvc3Bhbj4KICAgICAgICAgIDwvZGl2PgogICAgICAg"
+        "ICAgPHNwYW4gc3R5bGU9ImNvbG9yOiM2NDc0OGI7IGZvbnQtc2l6ZToxM3B4OyBmbGV4OjE7"
+        "IHRleHQtYWxpZ246Y2VudGVyOyI+JHtkZXNjfTwvc3Bhbj4KICAgICAgICAgIDxzcGFuIHN0"
+        "eWxlPSJmb250LXdlaWdodDo3MDA7IGNvbG9yOiMwZjE3MmE7IGZvbnQtc2l6ZToxNHB4OyI+"
+        "JHttYXh9wqAgPHNwYW4gc3R5bGU9ImZvbnQtd2VpZ2h0OjQwMDsgY29sb3I6Izk0YTNiODsg"
+        "Zm9udC1zaXplOjEycHg7Ij4vICR7bWlufcKwPC9zcGFuPjwvc3Bhbj4KICAgICAgICA8L2Rp"
+        "dj4KICAgICAgYDsgCiAgICB9CiAgICBjb250YWluZXIuaW5uZXJIVE1MID0gaHRtbDsKICB9"
+        "IGNhdGNoIChlKSB7CiAgICBjb250YWluZXIuaW5uZXJIVE1MID0gJzxkaXYgc3R5bGU9ImZv"
+        "bnQtc2l6ZToxM3B4OyBjb2xvcjojOTRhM2I4OyI+V2VhdGhlciBzeW5jaW5nLi4uPC9kaXY+"
+        "JzsKICB9Cn0KCmFzeW5jIGZ1bmN0aW9uIHVwZGF0ZVBhZHJlc0JveCgpIHsKICBjb25zdCBi"
+        "b3ggPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncGFkcmVzLWxpdmUtYm94Jyk7CiAgaWYg"
+        "KCFib3gpIHJldHVybjsKICB0cnkgewogICAgY29uc3Qgcm
