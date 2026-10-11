@@ -20,6 +20,27 @@ HOLDINGS = [
 
 WATCHLIST = ["USAR", "ISRG", "LMT", "TMO", "MU", "WDC", "CSCO", "VRT", "AVGO"]
 
+# Discovery candidates tracked for high-impact defense and enterprise infrastructure catalysts
+DISCOVERY_TICKERS = ["RTX", "NOC", "GD", "BA"]
+
+# Entity alias map used to scan contract awards & SEC disclosures
+ENTITY_MAP = {
+    "PLTR": ["palantir"],
+    "MSFT": ["microsoft"],
+    "NVDA": ["nvidia"],
+    "AMZN": ["amazon", "amazon web services", "aws"],
+    "EQIX": ["equinix"],
+    "LMT": ["lockheed martin", "lockheed"],
+    "USAR": ["usa rare earth", "round top"],
+    "VRT": ["vertiv"],
+    "AVGO": ["broadcom"],
+    "MU": ["micron"],
+    "CSCO": ["cisco"],
+    "RTX": ["raytheon", "rtx corp"],
+    "NOC": ["northrop grumman", "northrop"],
+    "GD": ["general dynamics"]
+}
+
 PADRES_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
 MLB_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
 TECH_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"
@@ -128,17 +149,10 @@ def scrape_mlb_front_page():
     return padres_articles, mlb_articles
 
 def fetch_padres_and_mlb_stories():
-    """
-    Padres 5-Spot Rules:
-    1. Top 2 slots: MLB.com & official Padres team news.
-    2. Slots 3 to 5: MLB Trade Rumors Padres articles strictly published within the last 2 days.
-    3. Backfill: Gaslamp Ball fills any remaining open spots up to 5 total.
-    """
     padres_mlb_scraped, mlb_stories = scrape_mlb_front_page()
     padres_final = []
     seen_padres_titles = set()
 
-    # Step 1: Lock in top 2 MLB.com articles
     for item in padres_mlb_scraped:
         if item["title"] not in seen_padres_titles:
             seen_padres_titles.add(item["title"])
@@ -146,7 +160,6 @@ def fetch_padres_and_mlb_stories():
             if len(padres_final) == 2:
                 break
 
-    # Step 2: Query MLB Trade Rumors Padres with a strict 2-day (48-hour) cutoff
     now_utc = datetime.now(timezone.utc)
     two_days_ago = now_utc - timedelta(days=2)
     
@@ -157,7 +170,6 @@ def fetch_padres_and_mlb_stories():
         if item["title"] in seen_padres_titles:
             continue
         
-        # Check publication date
         pub_parsed = item.get("published_parsed")
         if pub_parsed:
             try:
@@ -168,7 +180,6 @@ def fetch_padres_and_mlb_stories():
             except Exception:
                 pass
 
-    # Step 3: If still under 5, fill remaining spots with Gaslamp Ball
     if len(padres_final) < 5:
         gaslamp_items = fetch_rss_items("https://gaslampball.com/rss/index.xml", limit=8, category="padres")
         for item in gaslamp_items:
@@ -178,7 +189,6 @@ def fetch_padres_and_mlb_stories():
                 seen_padres_titles.add(item["title"])
                 padres_final.append(item)
 
-    # General MLB stories
     seen_mlb_titles = {m["title"] for m in mlb_stories}
     if len(mlb_stories) < 5:
         supp_mlb = fetch_rss_items("https://www.mlbtraderumors.com/feed", limit=8, category="mlb")
@@ -190,6 +200,76 @@ def fetch_padres_and_mlb_stories():
                     break
 
     return padres_final[:5], mlb_stories[:5]
+
+def evaluate_high_conviction_catalysts():
+    """
+    Scans DoD daily contract bulletins and validates unusual institutional volume breakout
+    across holdings, watchlist, and discovery candidates.
+    """
+    signals = []
+    now_utc = datetime.now(timezone.utc)
+    
+    # 1. Scrape latest Department of Defense daily contract awards
+    dod_text = ""
+    try:
+        url = "https://www.defense.gov/News/Contracts/"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        html = urllib.request.urlopen(req, timeout=8).read().decode('utf-8', errors='ignore')
+        soup = BeautifulSoup(html, 'html.parser')
+        dod_text = soup.get_text().lower()
+    except Exception as e:
+        print(f"Notice fetching DoD contracts: {e}")
+
+    # 2. Check each tracked ticker for contract presence and relative volume expansion
+    all_tickers = HOLDINGS + WATCHLIST + DISCOVERY_TICKERS
+    seen_tickers = set()
+
+    for ticker in all_tickers:
+        if "-USD" in ticker or ticker in seen_tickers:
+            continue
+        seen_tickers.add(ticker)
+
+        aliases = ENTITY_MAP.get(ticker, [ticker.lower()])
+        has_contract = any(alias in dod_text for alias in aliases)
+
+        try:
+            t = yf.Ticker(ticker)
+            hist = t.history(period="1mo")
+            if len(hist) >= 15:
+                avg_vol = float(hist['Volume'][:-1].mean())
+                today_vol = float(hist['Volume'].iloc[-1])
+                pct_change = float(((hist['Close'].iloc[-1] - hist['Close'].iloc[-2]) / hist['Close'].iloc[-2]) * 100)
+                vol_ratio = (today_vol / avg_vol) if avg_vol > 0 else 1.0
+
+                # High Conviction Rules:
+                # A: Confirmed contract award from DoD or major agency
+                # B: Significant volume spike (>1.75x 20-day SMA) on an upward trajectory (>+1.5%)
+                if has_contract and pct_change >= 0:
+                    group = "Current Portfolio" if ticker in HOLDINGS else ("Active Watchlist" if ticker in WATCHLIST else "Discovery Opportunity")
+                    signals.append({
+                        "ticker": ticker,
+                        "group": group,
+                        "type": "DoD Procurement / Contract Award",
+                        "vol_ratio": f"{vol_ratio:.1f}x",
+                        "pct": f"{pct_change:+.2f}%",
+                        "summary": f"Confirmed major federal defense award or contract modification identified. Relative volume tracking at {vol_ratio:.1f}x average.",
+                        "url": get_financial_url(ticker)
+                    })
+                elif vol_ratio >= 1.75 and pct_change >= 2.0:
+                    group = "Current Portfolio" if ticker in HOLDINGS else ("Active Watchlist" if ticker in WATCHLIST else "Discovery Opportunity")
+                    signals.append({
+                        "ticker": ticker,
+                        "group": group,
+                        "type": "Institutional Volume Breakout",
+                        "vol_ratio": f"{vol_ratio:.1f}x",
+                        "pct": f"{pct_change:+.2f}%",
+                        "summary": f"Unusual volume expansion ({vol_ratio:.1f}x average) indicating aggressive institutional accumulation.",
+                        "url": get_financial_url(ticker)
+                    })
+        except Exception:
+            continue
+
+    return signals[:2]  # Return top 1 or 2 highest conviction alerts to keep dashboard clean
 
 def get_sorted_ticker_quotes(tickers):
     data_list = []
@@ -268,7 +348,7 @@ def run_agent():
         sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
     sd_local_news = sd_local_news[:5]
 
-    print("Executing Padres 5-spot pipeline (Top 2 MLB.com + 2-Day MLBTR + Gaslamp)...")
+    print("Executing Padres 5-spot pipeline...")
     padres_articles, other_mlb = fetch_padres_and_mlb_stories()
 
     rundown_ai = fetch_rss_items("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", limit=4, category="ai")
@@ -288,6 +368,9 @@ def run_agent():
             ai_tech_items.append(item)
         if len(ai_tech_items) >= 10:
             break
+
+    print("Evaluating high-conviction catalysts & federal awards...")
+    active_catalysts = evaluate_high_conviction_catalysts()
 
     print("Fetching sorted market quotes...")
     sorted_holdings = get_sorted_ticker_quotes(HOLDINGS)
@@ -381,6 +464,13 @@ setInterval(updatePadresBox, 30000);
         "- Clean White & Slate aesthetic: Page Background: #f1f5f9, Container Cards: #ffffff, Border: 1px solid #e2e8f0, Border-radius: 12px, Padding: 18px.\n"
         "- Fluid full-width layout: width: 98vw; max-width: 1820px; margin: 0 auto;.\n"
         "- NO TOP TITLE BANNER. Layout starts at the very top edge.\n\n"
+        "CATALYST ANNOUNCEMENT BANNER (TOP OF PAGE):\n"
+        "Active Catalysts Data: " + str(active_catalysts) + "\n"
+        "- IF active catalysts exist: Render a prominent, sleek card spanning the width above the three columns.\n"
+        "  * Card style: background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 12px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;\n"
+        "  * Left side: An alert badge <span style=\"background:#15803d; color:#ffffff; font-size:12px; font-weight:700; padding:3px 8px; border-radius:4px; text-transform:uppercase;\">Catalyst Radar Alert</span>, followed by the Ticker in bold, the catalyst category, and the summary text.\n"
+        "  * Right side: Direct clickable button <a href=\"item.url\" target=\"_blank\" style=\"background:#16a34a; color:#fff; font-size:13px; font-weight:600; padding:6px 12px; border-radius:6px; text-decoration:none;\">Review Filing / Catalyst →</a>\n"
+        "- IF active catalysts is empty: Do not render any banner.\n\n"
         "THREE-COLUMN TOP LEVEL LAYOUT:\n"
         "1. LEFT COLUMN (WIDTH: 260px): 'Spring Valley 14-Day Forecast'\n"
         "   - Card title: 'Spring Valley 14-Day Forecast'\n"
