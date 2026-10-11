@@ -20,6 +20,23 @@ HOLDINGS = [
 WATCHLIST = ["USAR", "ISRG", "LMT", "TMO", "MU", "WDC", "CSCO", "VRT", "AVGO"]
 DISCOVERY_TICKERS = ["RTX", "NOC", "GD", "BA"]
 
+ENTITY_MAP = {
+    "PLTR": ["palantir"],
+    "MSFT": ["microsoft"],
+    "NVDA": ["nvidia"],
+    "AMZN": ["amazon", "aws"],
+    "EQIX": ["equinix"],
+    "LMT": ["lockheed martin", "lockheed"],
+    "USAR": ["usa rare earth"],
+    "VRT": ["vertiv"],
+    "AVGO": ["broadcom"],
+    "MU": ["micron"],
+    "CSCO": ["cisco"],
+    "RTX": ["raytheon", "rtx"],
+    "NOC": ["northrop grumman", "northrop"],
+    "GD": ["general dynamics"]
+}
+
 PADRES_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
 MLB_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
 TECH_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"
@@ -101,15 +118,65 @@ def fetch_padres_stories():
     return p_final[:5], mlb[:5]
 
 def get_catalyst_alerts():
-    return [{
-        "ticker": "APEX",
-        "group": "Active Watchlist",
-        "type": "DoD Defense Procurement Award",
-        "vol_ratio": "3.2x",
-        "pct": "+6.85%",
-        "summary": "APEX Systems awarded $485M multi-year contract for Tactical Edge Sensor Arrays. Volume running 3.2x above 20-day average.",
-        "url": "https://finance.yahoo.com"
-    }]
+    signals = []
+    dod_text = ""
+    try:
+        url = "https://www.defense.gov/News/Contracts/"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        html = urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore")
+        soup = BeautifulSoup(html, "html.parser")
+        dod_text = soup.get_text().lower()
+    except Exception as e:
+        print("Notice DoD contracts:", str(e))
+
+    all_tickers = HOLDINGS + WATCHLIST + DISCOVERY_TICKERS
+    seen_tickers = set()
+
+    for ticker in all_tickers:
+        if "-USD" in ticker or ticker in seen_tickers:
+            continue
+        seen_tickers.add(ticker)
+
+        aliases = ENTITY_MAP.get(ticker, [ticker.lower()])
+        has_contract = any(alias in dod_text for alias in aliases)
+
+        try:
+            t = yf.Ticker(ticker)
+            hist = t.history(period="1mo")
+            if len(hist) >= 15:
+                avg_vol = float(hist["Volume"].iloc[:-1].mean())
+                today_vol = float(hist["Volume"].iloc[-1])
+                c_prev = float(hist["Close"].iloc[-2])
+                c_last = float(hist["Close"].iloc[-1])
+                pct_val = ((c_last - c_prev) / c_prev) * 100.0
+                vol_ratio = (today_vol / avg_vol) if avg_vol > 0 else 1.0
+
+                grp = "Current Portfolio" if ticker in HOLDINGS else ("Active Watchlist" if ticker in WATCHLIST else "Discovery Opportunity")
+
+                if has_contract and pct_val >= 0:
+                    signals.append({
+                        "ticker": ticker,
+                        "group": grp,
+                        "type": "DoD Procurement / Defense Contract Award",
+                        "vol_ratio": f"{vol_ratio:.1f}x",
+                        "pct": f"{pct_val:+.2f}%",
+                        "summary": "Confirmed federal procurement award or contract modification identified. Volume running " + f"{vol_ratio:.1f}x average.",
+                        "url": get_fin_url(ticker)
+                    })
+                elif vol_ratio >= 1.75 and pct_val >= 2.0:
+                    signals.append({
+                        "ticker": ticker,
+                        "group": grp,
+                        "type": "Institutional Volume Breakout",
+                        "vol_ratio": f"{vol_ratio:.1f}x",
+                        "pct": f"{pct_val:+.2f}%",
+                        "summary": "Aggressive institutional accumulation detected (" + f"{vol_ratio:.1f}x normal volume) alongside strong price expansion.",
+                        "url": get_fin_url(ticker)
+                    })
+        except Exception:
+            continue
+
+    return signals[:2]
 
 def get_quotes(tickers):
     out = []
@@ -209,19 +276,24 @@ def run_agent():
     sd = fetch_rss("https://www.cbs8.com/feeds/syndication/rss/news/local", 5)
     padres, mlb = fetch_padres_stories()
     ai = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 10, "ai")
+    
+    print("Scanning high-conviction catalysts & federal procurement...")
     catalysts = get_catalyst_alerts()
+    print("Detected active signals:", len(catalysts))
+
     holdings = get_quotes(HOLDINGS)
     watchlist = get_quotes(WATCHLIST)
 
     prompt = (
         "Generate a single HTML dashboard document.\n"
-        "PAGE STYLING: Background: #f1f5f9; Cards: #ffffff; Border: 1px solid #e2e8f0; Border-radius: 12px; Padding: 18px; Layout: width 98vw; max-width: 1820px; margin: 0 auto; Start at top edge.\n"
+        "PAGE STYLING: Background: #f1f5f9; Cards: #ffffff; Border: 1px solid #e2e8f0; Border-radius: 12px; Padding: 18px; Layout: width 98vw; max-width 1820px; margin: 0 auto; Start at top edge.\n"
         "CSS KEYFRAME ANIMATION: @keyframes pulse-alert { 0% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); } 50% { border-color:#b91c1c; box-shadow:0 0 18px 5px rgba(239,68,68,0.55); } 100% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); } }\n"
-        "EXPANDED CATALYST RADAR ALERT BANNER (TOP OF PAGE):\n"
-        "Data: " + str(catalysts) + "\n"
-        "Render a prominent 15% enlarged alert container across full width above the 3 columns: padding 18px 26px; margin-bottom: 22px; border-radius: 12px; display flex; align-items center; justify-content space-between; background #fff5f5; border 3px solid #ef4444; animation pulse-alert 1.5s infinite;\n"
-        "Left side: <span style='background:#dc2626;color:#fff;font-size:14px;font-weight:800;padding:6px 14px;border-radius:6px;text-transform:uppercase;'>🚨 Catalyst Radar Alert</span> <strong style='font-size:20px;color:#991b1b;margin-left:12px;'>APEX</strong> <span style='font-size:15px;color:#b91c1c;'>(DoD Defense Procurement Award)</span> <div style='font-size:15px;color:#1e293b;margin-top:6px;'>APEX Systems awarded $485M multi-year contract for Tactical Edge Sensor Arrays. Volume running 3.2x above 20-day average.</div>\n"
-        "Right side: <a href='https://finance.yahoo.com' target='_blank' style='background:#dc2626;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:8px;text-decoration:none;'>Review Filing / Catalyst →</a>\n"
+        "CATALYST RADAR ALERT BANNER (TOP OF PAGE):\n"
+        "Active Catalysts Data: " + str(catalysts) + "\n"
+        "- IF Active Catalysts Data has items (not empty): Render a prominent 15% enlarged alert container across full width above the 3 columns: padding 18px 26px; margin-bottom: 22px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: #fff5f5; border: 3px solid #ef4444; animation: pulse-alert 1.5s infinite;\n"
+        "  * Left side: <span style='background:#dc2626;color:#fff;font-size:14px;font-weight:800;padding:6px 14px;border-radius:6px;text-transform:uppercase;'>🚨 Catalyst Radar Alert</span> <strong style='font-size:20px;color:#991b1b;margin-left:12px;'>item.ticker</strong> <span style='font-size:15px;color:#b91c1c;'>(item.type)</span> <div style='font-size:15px;color:#1e293b;margin-top:6px;'>item.summary</div>\n"
+        "  * Right side: <a href='item.url' target='_blank' style='background:#dc2626;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:8px;text-decoration:none;white-space:nowrap;'>Review Filing / Catalyst →</a>\n"
+        "- IF Active Catalysts Data is [] (empty): DO NOT RENDER ANY BANNER OR CONTAINER AT ALL. The page must start cleanly at the three columns.\n"
         "THREE COLUMNS:\n"
         "1. LEFT (260px): 'Spring Valley 14-Day Forecast' with <div id='weather-forecast-list'>Loading...</div>\n"
         "2. CENTER (FLEX 1): Top: Box A 'Sports Desk: Padres & MLB' (<div id='padres-live-box'></div>, Top 5 Padres: " + str(padres) + ", Top 5 MLB: " + str(mlb) + ") and Box B 'Executive News' (Top 5 World: " + str(world) + ", Top 5 SD: " + str(sd) + "). Bottom: 'AI & Big Tech' (10 items: " + str(ai) + ").\n"
