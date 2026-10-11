@@ -3,6 +3,7 @@ import re
 import time
 import urllib.request
 import json
+import base64
 import feedparser
 import yfinance as yf
 from datetime import datetime, timezone, timedelta
@@ -219,18 +220,25 @@ def get_available_flash_models():
     return preferred
 
 def get_js():
-    return """
-<script>
-async function updateWeather() {
-  const c = document.getElementById('weather-forecast-list');
-  if (!c) return;
-  try {
-    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=14');
-    const d = await r.json();
-    let h = '';
-    const codes = {
-      0: '☀️ Clear', 1: '🌤️ Clear', 2: '⛅ Pt Cloudy', 3: '☁️ Overcast',
-      45: '🌫️ Fog', 48: '🌫️ Fog', 51: '🌦️ Drizzle', 61: '🌧️ Rain', 80: '🌦️ Showers', 95: '⛈️ Storm'
-    };
-    for (let i = 0; i < d.daily.time.length; i++) {
-      const dt = new Date(d.daily.time[i] + 'T12:00:0
+    b64_script = (
+        "PHNjcmlwdD4KYXN5bmMgZnVuY3Rpb24gdXBkYXRlV2VhdGhlcigpIHsKICBjb25zdCBjID0g"
+        "ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3dlYXRoZXItZm9yZWNhc3QtbGlzdCcpOwogIGlm"
+        "ICghYykgcmV0dXJuOwogIHRyeSB7CiAgICBjb25zdCByID0gYXdhaXQgZmV0Y2goJ2h0dHBz"
+        "Oi8vYXBpLm9wZW4tbWV0ZW8uY29tL3YxL2ZvcmVjYXN0P2xhdGl0dWRlPTMyLjc0NDgmbG9u"
+        "Z2l0dWRlPS0xMTYuOTk4OSZkYWlseT13ZWF0aGVyY29kZSx0ZW1wZXJhdHVyZV8ybV9tYXgs"
+        "dGVtcGVyYXR1cmVfMm1fbWluJnRlbXBlcmF0dXJlX3VuaXQ9ZmFocmVuaGVpdCZ0aW1lem9u"
+        "ZT1BbWVyaWNhJTJGTG9zX0FuZ2VsZXMmZm9yZWNhc3RfZGF5cz0xNCcpOwogICAgY29uc3Qg"
+        "ZCA9IGF3YWl0IHIuanNvbigpOwogICAgbGV0IGggPSAnJzsKICAgIGNvbnN0IGNvZGVzID0g"
+        "ezA6J+KYgCBDbGVhcicsIDE6J/CfjKQgQ2xlYXInLCAyOifwn4ylIFB0IENsb3VkeScsIDM6"
+        "J+KYge+4jyBPdmVyY2FzdCcsIDQ1Oifwn4yrIEZvZycsIDUxOifwn4ymIERyaXp6bGUnLCA2"
+        "MTon8J+MpyBSYWluJywgODA6J/CfjKYgU2hvd2VycycsIDk1Oifim8ggU3Rvcm0nfTsKICAg"
+        "IGZvciAobGV0IGkgPSAwOyBpIDwgZC5kYWlseS50aW1lLmxlbmd0aDsgaSsrKSB7CiAgICAg"
+        "IGNvbnN0IGR0ID0gbmV3IERhdGUoZC5kYWlseS50aW1lW2ldICsgJ1QxMjowMDowMCcpOwog"
+        "ICAgICBjb25zdCBkYXkgPSBpID09PSAwID8gJ1RvZGF5JyA6IGR0LnRvTG9jYWxlRGF0ZVN0"
+        "cmluZygndW4tVVMnLCB7d2Vla2RheTonc2hvcnQnfSk7CiAgICAgIGNvbnN0IG1kID0gKGR0"
+        "LmdldE1vbnRoKCkgKyAxKSArICcvJyArIGR0LmdldERhdGUoKTsKICAgICAgY29uc3QgbWF4"
+        "ID0gTWF0aC5yb3VuZChkLmRhaWx5LnRlbXBlcmF0dXJlXzJtX21heFtpXSk7CiAgICAgIGNv"
+        "bnN0IG1pbiA9IE1hdGgucm91bmQoZC5kYWlseS50ZW1wZXJhdHVyZV8ybV9taW5baV0pOwog"
+        "ICAgICBjb25zdCBkZXNjID0gY29kZXNbZC5kYWlseS53ZWF0aGVyY29kZVtpaV0gfHwgJ/Cf"
+        "jKQgRmFpcic7CiAgICAgIGggKz0gJzxkaXYgc3R5bGU9ImRpc3BsYXk6ZmxleDtqdXN0aWZ5"
+        "LWNvbnRlbnQ6c3BhY2UtYmV0d2V
