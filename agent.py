@@ -20,10 +20,8 @@ HOLDINGS = [
 
 WATCHLIST = ["USAR", "ISRG", "LMT", "TMO", "MU", "WDC", "CSCO", "VRT", "AVGO"]
 
-# Discovery candidates tracked for high-impact defense and enterprise infrastructure catalysts
 DISCOVERY_TICKERS = ["RTX", "NOC", "GD", "BA"]
 
-# Entity alias map used to scan contract awards & SEC disclosures
 ENTITY_MAP = {
     "PLTR": ["palantir"],
     "MSFT": ["microsoft"],
@@ -219,8 +217,6 @@ def evaluate_high_conviction_catalysts():
         "url": "https://finance.yahoo.com"
     })
 
-    now_utc = datetime.now(timezone.utc)
-    
     dod_text = ""
     try:
         url = "https://www.defense.gov/News/Contracts/"
@@ -279,3 +275,80 @@ def evaluate_high_conviction_catalysts():
     return signals[:2]
 
 def get_sorted_ticker_quotes(tickers):
+    data_list = []
+    for ticker in tickers:
+        url = get_financial_url(ticker)
+        try:
+            t = yf.Ticker(ticker)
+            fast_info = getattr(t, "fast_info", None)
+            price = None
+            pct_change = 0.0
+            
+            if fast_info:
+                price = fast_info.last_price
+                prev = fast_info.previous_close
+                if price and prev:
+                    pct_change = ((price - prev) / prev) * 100
+            
+            if price is None:
+                hist = t.history(period="2d")
+                if len(hist) >= 1:
+                    price = float(hist["Close"].iloc[-1])
+                    if len(hist) >= 2:
+                        prev = float(hist["Close"].iloc[-2])
+                        pct_change = ((price - prev) / prev) * 100
+
+            if price is not None:
+                data_list.append({
+                    "ticker": ticker,
+                    "price": f"${price:,.2f}" if price >= 1 else f"${price:,.4f}",
+                    "pct_num": pct_change,
+                    "pct": f"{pct_change:+.2f}%",
+                    "positive": pct_change >= 0,
+                    "url": url
+                })
+            else:
+                data_list.append({
+                    "ticker": ticker,
+                    "price": "N/A",
+                    "pct_num": 0.0,
+                    "pct": "0.00%",
+                    "positive": True,
+                    "url": url
+                })
+        except Exception:
+            data_list.append({
+                "ticker": ticker,
+                "price": "N/A",
+                "pct_num": 0.0,
+                "pct": "0.00%",
+                "positive": True,
+                "url": url
+            })
+
+    data_list.sort(key=lambda x: x["pct_num"], reverse=True)
+    return data_list
+
+def get_available_flash_models():
+    preferred = []
+    try:
+        for m in client.models.list():
+            name = m.name.replace("models/", "")
+            if "flash" in name.lower() and not name.endswith("-exp"):
+                preferred.append(name)
+    except Exception as e:
+        print(f"Notice listing models: {e}")
+    if not preferred:
+        preferred = ["gemini-3.8-flash", "gemini-3-flash-preview"]
+    return preferred
+
+def run_agent():
+    print("Collecting news feeds...")
+    world_news = fetch_rss_items("https://feeds.bbci.co.uk/news/world/rss.xml", limit=5, category="general")
+    
+    sd_local_news = fetch_rss_items("https://www.cbs8.com/feeds/syndication/rss/news/local", limit=6, category="general")
+    if len(sd_local_news) < 5:
+        sd_local_news += fetch_rss_items("https://www.nbcsandiego.com/?rss=y", limit=6, category="general")
+    sd_local_news = sd_local_news[:5]
+
+    print("
