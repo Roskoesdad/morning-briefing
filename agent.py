@@ -48,14 +48,109 @@ PADRES_KEYS = [
     "morejon", "king", "france", "tatis", "machado", "merrill", "cease"
 ]
 
+DEFAULT_JS_CONTENT = """async function updateWeather() {
+  const c = document.getElementById('weather-forecast-list');
+  if (!c) return;
+  try {
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FLos_Angeles&forecast_days=14';
+    const r = await fetch(u);
+    const d = await r.json();
+    let h = '';
+    const codes = {
+      0: '☀️ Clear',
+      1: '🌤️ Mostly Clear',
+      2: '⛅ Pt Cloudy',
+      3: '☁️ Overcast',
+      45: '🌫️ Fog',
+      48: '🌫️ Fog',
+      51: '🌦️ Light Drizzle',
+      53: '🌦️ Drizzle',
+      55: '🌧️ Heavy Drizzle',
+      61: '🌧️ Light Rain',
+      63: '🌧️ Rain',
+      65: '🌧️ Heavy Rain',
+      80: '🌦️ Showers',
+      81: '🌧️ Heavy Showers',
+      95: '⛈️ Storm'
+    };
+    for (let i = 0; i < d.daily.time.length; i++) {
+      const dt = new Date(d.daily.time[i] + 'T12:00:00');
+      const day = i === 0 ? 'Today' : dt.toLocaleDateString('en-US', { weekday: 'short' });
+      const md = (dt.getMonth() + 1) + '/' + dt.getDate();
+      const max = Math.round(d.daily.temperature_2m_max[i]);
+      const min = Math.round(d.daily.temperature_2m_min[i]);
+      const code = d.daily.weathercode[i];
+      const prob = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : 0;
+      const inch = d.daily.precipitation_sum ? d.daily.precipitation_sum[i] : 0;
+      let desc = codes[code] || '🌤️ Fair';
+      if (prob >= 35 || inch >= 0.02) {
+        if (!desc.includes('Rain') && !desc.includes('Drizzle') && !desc.includes('Showers')) {
+          desc = '🌦️ Rain (' + prob + '%)';
+        } else {
+          desc += ' (' + prob + '%)';
+        }
+      }
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 6px;border-bottom:1px solid #f1f5f9;font-size:14px;"><div><strong>' + day + '</strong> <span style="font-size:11px;color:#94a3b8;">' + md + '</span></div><span style="color:#64748b;font-size:13px;">' + desc + '</span><strong>' + max + '° <span style="font-weight:400;color:#94a3b8;font-size:12px;">/ ' + min + '°</span></strong></div>';
+    }
+    c.innerHTML = h;
+  } catch (e) {
+    c.innerHTML = '<div style="color:#94a3b8;">Weather syncing...</div>';
+  }
+}
+
+async function updatePadres() {
+  const b = document.getElementById('padres-live-box');
+  if (!b) return;
+  try {
+    const u = 'https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore';
+    const r = await fetch(u);
+    const d = await r.json();
+    if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {
+      b.innerHTML = '⚾ <strong>Padres:</strong> Offseason / No game scheduled today.';
+      return;
+    }
+    const g = d.dates[0].games[0];
+    const s = g.status.abstractGameState;
+    const a = g.teams.away.team.name;
+    const h = g.teams.home.team.name;
+    const as = g.teams.away.score || 0;
+    const hs = g.teams.home.score || 0;
+    if (s === 'Live') {
+      b.innerHTML = '🔴 <span style="color:#dc2626;font-weight:700;">LIVE:</span> ' + a + ' ' + as + ' @ ' + h + ' ' + hs;
+    } else if (s === 'Final') {
+      b.innerHTML = '🏁 <strong>FINAL:</strong> ' + a + ' ' + as + ' - ' + h + ' ' + hs;
+    } else {
+      b.innerHTML = '⚾ <strong>Upcoming:</strong> ' + a + ' @ ' + h;
+    }
+  } catch (e) {
+    b.innerHTML = 'Padres live feed standby.';
+  }
+}
+
+updateWeather();
+updatePadres();
+setInterval(updatePadres, 30000);
+"""
+
 def get_fin_url(t):
-    return "https://finance.yahoo.com/quote/" + str(t) + "/"
+    return f"https://finance.yahoo.com/quote/{t}/"
 
 def extract_thumb(e, cat="general"):
-    if "media_thumbnail" in e and e.media_thumbnail:
-        return e.media_thumbnail[0].get("url", "")
     if "media_content" in e and e.media_content:
-        return e.media_content[0].get("url", "")
+        for m in e.media_content:
+            u = m.get("url", "")
+            if u and any(ext in u.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+                return u
+    if "media_thumbnail" in e and e.media_thumbnail:
+        for m in e.media_thumbnail:
+            u = m.get("url", "")
+            if u:
+                return u
+    if "enclosures" in e and e.enclosures:
+        for enc in e.enclosures:
+            u = enc.get("href", "")
+            if u and any(ext in u.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+                return u
     c = e.get("content", [{}])[0].get("value", "") or e.get("description", "")
     m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', c)
     if m:
@@ -71,7 +166,7 @@ def fetch_rss(url, limit=10, cat="general"):
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0"}
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         )
         fd = urllib.request.urlopen(req, timeout=8).read()
         f = feedparser.parse(fd)
@@ -95,7 +190,7 @@ def scrape_mlb():
         try:
             req = urllib.request.Request(
                 u,
-                headers={"User-Agent": "Mozilla/5.0"}
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
             )
             h = urllib.request.urlopen(req, timeout=10).read()
             html = h.decode("utf-8", errors="ignore")
@@ -105,7 +200,7 @@ def scrape_mlb():
                 title = a.get_text(strip=True)
                 if "/news/" in href and len(title) > 20 and title not in seen:
                     seen.add(title)
-                    link = href if href.startswith("http") else ("https://www.mlb.com" + href)
+                    link = href if href.startswith("http") else f"https://www.mlb.com{href}"
                     is_p = any(k in title.lower() for k in PADRES_KEYS) or "padres" in href
                     if is_p:
                         padres.append({"title": title, "link": link, "image": PADRES_LOGO})
@@ -143,6 +238,26 @@ def fetch_padres_stories():
                 p_final.append(item)
     return p_final[:5], mlb[:5]
 
+def fetch_fox5_news():
+    feeds = [
+        "https://fox5sandiego.com/news/feed/",
+        "https://fox5sandiego.com/feed/"
+    ]
+    seen_titles = set()
+    items = []
+    for f_url in feeds:
+        fetched = fetch_rss(f_url, 8, "general")
+        for it in fetched:
+            t = it["title"]
+            if t not in seen_titles and len(t) > 10:
+                seen_titles.add(t)
+                items.append(it)
+                if len(items) >= 5:
+                    break
+        if len(items) >= 5:
+            break
+    return items[:5]
+
 def get_catalyst_alerts():
     signals = []
     dod_text = ""
@@ -150,7 +265,10 @@ def get_catalyst_alerts():
         url = "https://www.defense.gov/News/Contracts/"
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0"}
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            }
         )
         h = urllib.request.urlopen(req, timeout=8).read()
         html = h.decode("utf-8", errors="ignore")
@@ -194,7 +312,7 @@ def get_catalyst_alerts():
                         "type": "DoD Procurement / Defense Contract Award",
                         "vol_ratio": f"{vol_ratio:.1f}x",
                         "pct": f"{pct_val:+.2f}%",
-                        "summary": "Confirmed federal procurement award identified. Volume: " + f"{vol_ratio:.1f}x average.",
+                        "summary": f"Confirmed federal procurement award identified. Volume: {vol_ratio:.1f}x average.",
                         "url": get_fin_url(ticker)
                     })
                 elif vol_ratio >= 1.75 and pct_val >= 2.0:
@@ -204,7 +322,7 @@ def get_catalyst_alerts():
                         "type": "Institutional Volume Breakout",
                         "vol_ratio": f"{vol_ratio:.1f}x",
                         "pct": f"{pct_val:+.2f}%",
-                        "summary": "Institutional accumulation detected (" + f"{vol_ratio:.1f}x normal volume) on upward move.",
+                        "summary": f"Institutional accumulation detected ({vol_ratio:.1f}x normal volume) on upward move.",
                         "url": get_fin_url(ticker)
                     })
         except Exception:
@@ -242,125 +360,43 @@ def get_quotes(tickers):
     return out
 
 def get_available_flash_models():
-    preferred = []
+    priority_order = [
+        "gemini-3.8-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-flash-latest"
+    ]
+    discovered = []
     try:
         for m in client.models.list():
             name = m.name.replace("models/", "")
-            if "flash" in name.lower() and not name.endswith("-exp"):
-                preferred.append(name)
+            if "flash" in name.lower() and not name.endswith("-exp") and "tts" not in name.lower():
+                discovered.append(name)
     except Exception as e:
         print("Models notice:", str(e))
-    if not preferred:
-        preferred = ["gemini-2.5-flash", "gemini-2.0-flash"]
-    return preferred
+    ordered = [m for m in priority_order if m in discovered]
+    for d in discovered:
+        if d not in ordered:
+            ordered.append(d)
+    return ordered if ordered else ["gemini-3.8-flash", "gemini-2.0-flash"]
 
 def get_js():
-    js_chunks = [
-        "<script>\n",
-        "async function updateWeather() {\n",
-        "  const c = document.getElementById('weather-forecast-list');\n",
-        "  if (!c) return;\n",
-        "  try {\n",
-        "    const u = 'https://api.open-meteo.com/v1/forecast?' +\n",
-        "      'latitude=32.7448&longitude=-116.9989&' +\n",
-        "      'daily=weathercode,temperature_2m_max,temperature_2m_min,' +\n",
-        "      'precipitation_probability_max,precipitation_sum&' +\n",
-        "      'temperature_unit=fahrenheit&precipitation_unit=inch&' +\n",
-        "      'timezone=America%2FLos_Angeles&forecast_days=14';\n",
-        "    const r = await fetch(u);\n",
-        "    const d = await r.json();\n",
-        "    let h = '';\n",
-        "    const codes = {\n",
-        "      0: '☀️ Clear',\n",
-        "      1: '🌤️ Mostly Clear',\n",
-        "      2: '⛅ Pt Cloudy',\n",
-        "      3: '☁️ Overcast',\n",
-        "      45: '🌫️ Fog',\n",
-        "      48: '🌫️ Fog',\n",
-        "      51: '🌦️ Light Drizzle',\n",
-        "      53: '🌦️ Drizzle',\n",
-        "      55: '🌧️ Heavy Drizzle',\n",
-        "      61: '🌧️ Light Rain',\n",
-        "      63: '🌧️ Rain',\n",
-        "      65: '🌧️ Heavy Rain',\n",
-        "      80: '🌦️ Showers',\n",
-        "      81: '🌧️ Heavy Showers',\n",
-        "      95: '⛈️ Storm'\n",
-        "    };\n",
-        "    for (let i = 0; i < d.daily.time.length; i++) {\n",
-        "      const dt = new Date(d.daily.time[i] + 'T12:00:00');\n",
-        "      const day = i === 0 ? 'Today' : dt.toLocaleDateString('en-US', {weekday:'short'});\n",
-        "      const md = (dt.getMonth() + 1) + '/' + dt.getDate();\n",
-        "      const max = Math.round(d.daily.temperature_2m_max[i]);\n",
-        "      const min = Math.round(d.daily.temperature_2m_min[i]);\n",
-        "      const code = d.daily.weathercode[i];\n",
-        "      const precipProb = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : 0;\n",
-        "      const precipIn = d.daily.precipitation_sum ? d.daily.precipitation_sum[i] : 0;\n",
-        "      let desc = codes[code] || '🌤️ Fair';\n",
-        "      if (precipProb >= 35 || precipIn >= 0.02) {\n",
-        "        if (!desc.includes('Rain') && !desc.includes('Drizzle') && !desc.includes('Showers')) {\n",
-        "          desc = '🌦️ Rain (' + precipProb + '%)';\n",
-        "        } else {\n",
-        "          desc += ' (' + precipProb + '%)';\n",
-        "        }\n",
-        "      }\n",
-        "      h += '<div style=\"display:flex;justify-content:space-between;' +\n",
-        "        'align-items:center;padding:14px 6px;' +\n",
-        "        'border-bottom:1px solid #f1f5f9;font-size:14px;\">' +\n",
-        "        '<div><strong>' + day + '</strong> ' +\n",
-        "        '<span style=\"font-size:11px;color:#94a3b8;\">' + md + '</span></div>' +\n",
-        "        '<span style=\"color:#64748b;font-size:13px;\">' + desc + '</span>' +\n",
-        "        '<strong>' + max + '° ' +\n",
-        "        '<span style=\"font-weight:400;color:#94a3b8;font-size:12px;\">/ ' +\n",
-        "        min + '°</span></strong></div>';\n",
-        "    }\n",
-        "    c.innerHTML = h;\n",
-        "  } catch (e) {\n",
-        "    c.innerHTML = '<div style=\"color:#94a3b8;\">Weather syncing...</div>';\n",
-        "  }\n",
-        "}\n",
-        "async function updatePadres() {\n",
-        "  const b = document.getElementById('padres-live-box');\n",
-        "  if (!b) return;\n",
-        "  try {\n",
-        "    const u = 'https://statsapi.mlb.com/api/v1/schedule?' +\n",
-        "      'sportId=1&teamId=135&hydrate=linescore';\n",
-        "    const r = await fetch(u);\n",
-        "    const d = await r.json();\n",
-        "    if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {\n",
-        "      b.innerHTML = '⚾ <strong>Padres:</strong> Offseason / No game scheduled today.';\n",
-        "      return;\n",
-        "    }\n",
-        "    const g = d.dates[0].games[0];\n",
-        "    const s = g.status.abstractGameState;\n",
-        "    const a = g.teams.away.team.name;\n",
-        "    const h = g.teams.home.team.name;\n",
-        "    const as = g.teams.away.score || 0;\n",
-        "    const hs = g.teams.home.score || 0;\n",
-        "    if (s === 'Live') {\n",
-        "      b.innerHTML = '🔴 <span style=\"color:#dc2626;font-weight:700;\">LIVE:</span> ' +\n",
-        "        a + ' ' + as + ' @ ' + h + ' ' + hs;\n",
-        "    } else if (s === 'Final') {\n",
-        "      b.innerHTML = '🏁 <strong>FINAL:</strong> ' +\n",
-        "        a + ' ' + as + ' - ' + h + ' ' + hs;\n",
-        "    } else {\n",
-        "      b.innerHTML = '⚾ <strong>Upcoming:</strong> ' + a + ' @ ' + h;\n",
-        "    }\n",
-        "  } catch (e) {\n",
-        "    b.innerHTML = 'Padres live feed standby.';\n",
-        "  }\n",
-        "}\n",
-        "updateWeather();\n",
-        "updatePadres();\n",
-        "setInterval(updatePadres, 30000);\n",
-        "</script>\n"
-    ]
-    return "".join(js_chunks)
+    if os.path.exists("widget.js"):
+        with open("widget.js", "r", encoding="utf-8") as f:
+            code = f.read().strip()
+    else:
+        code = DEFAULT_JS_CONTENT.strip()
+        with open("widget.js", "w", encoding="utf-8") as f:
+            f.write(code)
+    return f"<script>\n{code}\n</script>"
 
 def run_agent():
     print("Collecting news feeds...")
     world = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
-    sd = fetch_rss("https://www.cbs8.com/feeds/syndication/rss/news/local", 5)
+    
+    print("Fetching FOX 5 San Diego local news...")
+    sd = fetch_fox5_news()
+    
     padres, mlb = fetch_padres_stories()
     ai = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 10, "ai")
 
@@ -371,65 +407,48 @@ def run_agent():
     holdings = get_quotes(HOLDINGS)
     watchlist = get_quotes(WATCHLIST)
 
-    p_lines = [
-        "Generate a single HTML dashboard document.",
-        "IMPORTANT RULES ON TABS AND CONDENSED VIEWS:",
-        "- DO NOT USE TABS. NEVER CREATE TAB BUTTONS (e.g. no 'World | San Diego' tabs, no 'Padres | MLB' tabs).",
-        "- All sections must display simultaneously in open, side-by-side split panels as detailed below.",
-        "PAGE STYLING: Background: #f1f5f9; Cards: #ffffff; Border: 1px solid #e2e8f0; Border-radius: 12px; Padding: 18px;",
-        "Layout: width: 98vw; max-width: 1820px; margin: 0 auto; Start at top edge without header banner.",
-        "CSS KEYFRAME ANIMATION:",
-        "@keyframes pulse-alert {",
-        "  0% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); }",
-        "  50% { border-color:#b91c1c; box-shadow:0 0 18px 5px rgba(239,68,68,0.55); }",
-        "  100% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); }",
-        "}",
-        "CATALYST RADAR ALERT BANNER (TOP OF PAGE):",
-        "Active Catalysts Data: " + str(catalysts),
-        "- IF Active Catalysts Data has items (not empty):",
-        "  Render 15% enlarged alert container spanning full width above 3 columns: padding 18px 26px; margin-bottom: 22px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: #fff5f5; border: 3px solid #ef4444; animation: pulse-alert 1.5s infinite;",
-        "  Left side: badge <span style='background:#dc2626;color:#fff;font-size:14px;font-weight:800;padding:6px 14px;border-radius:6px;text-transform:uppercase;'>🚨 Catalyst Radar Alert</span> <strong style='font-size:20px;color:#991b1b;margin-left:12px;'>item.ticker</strong> <span style='font-size:15px;color:#b91c1c;'>(item.type)</span> <div style='font-size:15px;color:#1e293b;margin-top:6px;'>item.summary</div>",
-        "  Right side: <a href='item.url' target='_blank' style='background:#dc2626;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:8px;text-decoration:none;white-space:nowrap;'>Review Filing / Catalyst →</a>",
-        "- IF Active Catalysts Data is [] (empty): DO NOT RENDER ANY BANNER OR CONTAINER.",
-        "THREE COLUMNS TOP-LEVEL LAYOUT (FLEX ROW OR GRID):",
-        "1. LEFT COLUMN (WIDTH: 270px): 'Spring Valley 14-Day Forecast'",
-        "   - Vertically stretch card to fill downward alongside the center feed. Card height: 100%;",
-        "   - Container: <div id='weather-forecast-list' style='display:flex; flex-direction:column; justify-content:space-between; height:100%;'>Loading forecast...</div>",
-        "2. CENTER / MAIN COLUMN (FLEX: 1, WIDE):",
-        "   - TOP CARD: 'Sports Desk: San Diego Padres & MLB'",
-        "     * Sub-header container with 2 equal side-by-side columns (NO TABS, display: grid; grid-template-columns: 1fr 1fr; gap: 20px;):",
-        "       - LEFT SIDE: 'San Diego Padres Updates' + <div id='padres-live-box' style='padding:10px; border-radius:8px; background:#f8fafc; border:1px solid #cbd5e1; margin-bottom:12px; font-weight:700;'>Checking Padres status...</div> + list of 5 Padres articles from " + str(padres) + " with 46x46 SD logo and clickable link.",
-        "       - RIGHT SIDE: 'League-Wide MLB Stories' + list of 5 MLB articles from " + str(mlb) + " with 46x46 MLB logo and clickable link.",
-        "   - MIDDLE CARD: 'Executive News (World & San Diego)'",
-        "     * Sub-header container with 2 equal side-by-side columns (NO TABS, display: grid; grid-template-columns: 1fr 1fr; gap: 20px;):",
-        "       - LEFT SIDE: 'Top 5 World Headlines' + list of 5 items from " + str(world) + " with 46x46 thumbnail and clickable title.",
-        "       - RIGHT SIDE: 'Top 5 San Diego Local News' + list of 5 items from " + str(sd) + " with 46x46 thumbnail and clickable title.",
-        "   - BOTTOM CARD: 'AI, Big Tech & Enterprise M&A'",
-        "     * 2-column card grid of exactly 10 items from " + str(ai) + " with 50x50 thumbnail and clickable title.",
-        "3. RIGHT COLUMN (WIDTH: 330px):",
-        "   - 'Portfolio Pulse' CARD:",
-        "     * CRITICAL: NO INTERNAL SCROLLBAR. Do NOT set max-height or overflow-y: scroll/auto.",
-        "     * List ALL 21 stocks from " + str(holdings) + " completely down the page.",
-        "     * Each row is wrapped in <a href='item.url' target='_blank'> with Ticker (bold), Price, and colored % badge (+ green, - red).",
-        "   - 'Watchlist Catalyst Radar' CARD:",
-        "     * Placed directly below the Portfolio Pulse card (naturally appearing below the fold as page two).",
-        "     * List items from " + str(watchlist) + " in clickable cards with price, % badge, and catalyst summary.",
-        "Insert marker [[WEATHER_AND_PADRES_JS]] before </body>.",
-        "Output clean raw HTML without markdown ticks."
-    ]
-    prompt = "\n".join(p_lines)
+    prompt_data = {
+        "catalysts": catalysts,
+        "padres": padres,
+        "mlb": mlb,
+        "world": world,
+        "sd": sd,
+        "ai": ai,
+        "holdings": holdings,
+        "watchlist": watchlist
+    }
+
+    instruction = (
+        "Generate a complete, single-page HTML executive briefing dashboard.\n"
+        "Data payload in JSON format:\n"
+        + json.dumps(prompt_data) + "\n\n"
+        "MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:\n"
+        "1. NO TABS. Display all content in open, simultaneous side-by-side split panels.\n"
+        "2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.\n"
+        "3. CSS KEYFRAME: @keyframes pulse-alert { 0%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} 50%{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);} 100%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} }\n"
+        "4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning the full width above the three columns (padding 18px 26px, margin-bottom 22px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.\n"
+        "5. THREE-COLUMN TOP LEVEL LAYOUT:\n"
+        "   - LEFT (270px width): 'Spring Valley 14-Day Forecast' card. Vertically expand card downward alongside center feed. Contains <div id='weather-forecast-list' style='display:flex;flex-direction:column;justify-content:space-between;height:100%;'>Loading forecast...</div>\n"
+        "   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Enterprise M&A' (2-column card grid of 10 tech items with 50x50 thumbnails).\n"
+        "   - RIGHT (330px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto) listing ALL items in 'holdings' sorted descending with ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card listing all items in 'watchlist'.\n"
+        "6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.\n"
+        "7. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."
+    )
 
     models = get_available_flash_models()
     resp = None
     for m in models:
-        try:
-            print("Calling model:", m)
-            resp = client.models.generate_content(model=m, contents=prompt)
-            if resp and resp.text:
-                break
-        except Exception as err:
-            print("Model retry error:", str(err))
-            time.sleep(4)
+        for attempt in range(2):
+            try:
+                print("Calling model:", m)
+                resp = client.models.generate_content(model=m, contents=instruction)
+                if resp and resp.text:
+                    break
+            except Exception as err:
+                print("Model retry error:", str(err))
+                time.sleep(3)
+        if resp and resp.text:
+            break
 
     if not resp or not resp.text:
         raise RuntimeError("Generation failed across all available models.")
@@ -439,7 +458,7 @@ def run_agent():
     if "[[WEATHER_AND_PADRES_JS]]" in html:
         html = html.replace("[[WEATHER_AND_PADRES_JS]]", js)
     elif "</body>" in html:
-        html = html.replace("</body>", js + "</body>")
+        html = html.replace("</body>", f"{js}</body>")
     else:
         html += js
 
