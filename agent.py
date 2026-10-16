@@ -48,6 +48,90 @@ PADRES_KEYS = [
     "morejon", "king", "france", "tatis", "machado", "merrill", "cease"
 ]
 
+DEFAULT_JS_CONTENT = """async function updateWeather() {
+  const c = document.getElementById('weather-forecast-list');
+  if (!c) return;
+  try {
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FLos_Angeles&forecast_days=14';
+    const r = await fetch(u);
+    const d = await r.json();
+    let h = '';
+    const codes = {
+      0: '☀️ Clear',
+      1: '🌤️ Mostly Clear',
+      2: '⛅ Pt Cloudy',
+      3: '☁️ Overcast',
+      45: '🌫️ Fog',
+      48: '🌫️ Fog',
+      51: '🌦️ Light Drizzle',
+      53: '🌦️ Drizzle',
+      55: '🌧️ Heavy Drizzle',
+      61: '🌧️ Light Rain',
+      63: '🌧️ Rain',
+      65: '🌧️ Heavy Rain',
+      80: '🌦️ Showers',
+      81: '🌧️ Heavy Showers',
+      95: '⛈️ Storm'
+    };
+    for (let i = 0; i < d.daily.time.length; i++) {
+      const dt = new Date(d.daily.time[i] + 'T12:00:00');
+      const day = i === 0 ? 'Today' : dt.toLocaleDateString('en-US', { weekday: 'short' });
+      const md = (dt.getMonth() + 1) + '/' + dt.getDate();
+      const max = Math.round(d.daily.temperature_2m_max[i]);
+      const min = Math.round(d.daily.temperature_2m_min[i]);
+      const code = d.daily.weathercode[i];
+      const prob = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : 0;
+      const inch = d.daily.precipitation_sum ? d.daily.precipitation_sum[i] : 0;
+      let desc = codes[code] || '🌤️ Fair';
+      if (prob >= 35 || inch >= 0.02) {
+        if (!desc.includes('Rain') && !desc.includes('Drizzle') && !desc.includes('Showers')) {
+          desc = '🌦️ Rain (' + prob + '%)';
+        } else {
+          desc += ' (' + prob + '%)';
+        }
+      }
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 6px;border-bottom:1px solid #f1f5f9;font-size:14px;"><div><strong>' + day + '</strong> <span style="font-size:11px;color:#94a3b8;">' + md + '</span></div><span style="color:#64748b;font-size:13px;">' + desc + '</span><strong>' + max + '° <span style="font-weight:400;color:#94a3b8;font-size:12px;">/ ' + min + '°</span></strong></div>';
+    }
+    c.innerHTML = h;
+  } catch (e) {
+    c.innerHTML = '<div style="color:#94a3b8;">Weather syncing...</div>';
+  }
+}
+
+async function updatePadres() {
+  const b = document.getElementById('padres-live-box');
+  if (!b) return;
+  try {
+    const u = 'https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore';
+    const r = await fetch(u);
+    const d = await r.json();
+    if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {
+      b.innerHTML = '⚾ <strong>Padres:</strong> Offseason / No game scheduled today.';
+      return;
+    }
+    const g = d.dates[0].games[0];
+    const s = g.status.abstractGameState;
+    const a = g.teams.away.team.name;
+    const h = g.teams.home.team.name;
+    const as = g.teams.away.score || 0;
+    const hs = g.teams.home.score || 0;
+    if (s === 'Live') {
+      b.innerHTML = '🔴 <span style="color:#dc2626;font-weight:700;">LIVE:</span> ' + a + ' ' + as + ' @ ' + h + ' ' + hs;
+    } else if (s === 'Final') {
+      b.innerHTML = '🏁 <strong>FINAL:</strong> ' + a + ' ' + as + ' - ' + h + ' ' + hs;
+    } else {
+      b.innerHTML = '⚾ <strong>Upcoming:</strong> ' + a + ' @ ' + h;
+    }
+  } catch (e) {
+    b.innerHTML = 'Padres live feed standby.';
+  }
+}
+
+updateWeather();
+updatePadres();
+setInterval(updatePadres, 30000);
+"""
+
 def get_fin_url(t):
     return f"https://finance.yahoo.com/quote/{t}/"
 
@@ -55,7 +139,7 @@ def extract_thumb(e, cat="general"):
     if "media_content" in e and e.media_content:
         for m in e.media_content:
             u = m.get("url", "")
-            if u and any(ext in u for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+            if u and any(ext in u.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
                 return u
     if "media_thumbnail" in e and e.media_thumbnail:
         for m in e.media_thumbnail:
@@ -65,7 +149,7 @@ def extract_thumb(e, cat="general"):
     if "enclosures" in e and e.enclosures:
         for enc in e.enclosures:
             u = enc.get("href", "")
-            if u and any(ext in u for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+            if u and any(ext in u.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
                 return u
     c = e.get("content", [{}])[0].get("value", "") or e.get("description", "")
     m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', c)
@@ -82,7 +166,7 @@ def fetch_rss(url, limit=10, cat="general"):
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         )
         fd = urllib.request.urlopen(req, timeout=8).read()
         f = feedparser.parse(fd)
@@ -106,7 +190,7 @@ def scrape_mlb():
         try:
             req = urllib.request.Request(
                 u,
-                headers={"User-Agent": "Mozilla/5.0"}
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
             )
             h = urllib.request.urlopen(req, timeout=10).read()
             html = h.decode("utf-8", errors="ignore")
@@ -181,7 +265,10 @@ def get_catalyst_alerts():
         url = "https://www.defense.gov/News/Contracts/"
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0"}
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            }
         )
         h = urllib.request.urlopen(req, timeout=8).read()
         html = h.decode("utf-8", errors="ignore")
@@ -273,21 +360,35 @@ def get_quotes(tickers):
     return out
 
 def get_available_flash_models():
-    preferred = []
+    priority_order = [
+        "gemini-3.8-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-flash-latest"
+    ]
+    discovered = []
     try:
         for m in client.models.list():
             name = m.name.replace("models/", "")
-            if "flash" in name.lower() and not name.endswith("-exp"):
-                preferred.append(name)
+            if "flash" in name.lower() and not name.endswith("-exp") and "tts" not in name.lower():
+                discovered.append(name)
     except Exception as e:
         print("Models notice:", str(e))
-    if not preferred:
-        preferred = ["gemini-2.5-flash", "gemini-2.0-flash"]
-    return preferred
+    ordered = [m for m in priority_order if m in discovered]
+    for d in discovered:
+        if d not in ordered:
+            ordered.append(d)
+    return ordered if ordered else ["gemini-3.8-flash", "gemini-2.0-flash"]
 
 def get_js():
-    with open("widget.js", "r", encoding="utf-8") as f:
-        return f"<script>\n{f.read()}\n</script>"
+    if os.path.exists("widget.js"):
+        with open("widget.js", "r", encoding="utf-8") as f:
+            code = f.read().strip()
+    else:
+        code = DEFAULT_JS_CONTENT.strip()
+        with open("widget.js", "w", encoding="utf-8") as f:
+            f.write(code)
+    return f"<script>\n{code}\n</script>"
 
 def run_agent():
     print("Collecting news feeds...")
@@ -337,14 +438,17 @@ def run_agent():
     models = get_available_flash_models()
     resp = None
     for m in models:
-        try:
-            print("Calling model:", m)
-            resp = client.models.generate_content(model=m, contents=instruction)
-            if resp and resp.text:
-                break
-        except Exception as err:
-            print("Model retry error:", str(err))
-            time.sleep(4)
+        for attempt in range(2):
+            try:
+                print("Calling model:", m)
+                resp = client.models.generate_content(model=m, contents=instruction)
+                if resp and resp.text:
+                    break
+            except Exception as err:
+                print("Model retry error:", str(err))
+                time.sleep(3)
+        if resp and resp.text:
+            break
 
     if not resp or not resp.text:
         raise RuntimeError("Generation failed across all available models.")
