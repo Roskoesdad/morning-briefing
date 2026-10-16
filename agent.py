@@ -15,10 +15,10 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 HOLDINGS = [
     "BTC-USD", "XRP-USD", "DOGE-USD", "SOL-USD", "BRK-B", "WMT",
     "AAPL", "AMZN", "MSFT", "NVDA", "DLTR", "VLO", "COST", "HOOD",
-    "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO"
+    "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO", "TMO"
 ]
 WATCHLIST = [
-    "USAR", "ISRG", "LMT", "TMO", "MU", "WDC", "CSCO", "VRT", "AVGO"
+    "USAR", "ISRG", "LMT", "MU", "WDC", "CSCO", "VRT", "AVGO"
 ]
 DISCOVERY_TICKERS = ["RTX", "NOC", "GD", "BA"]
 
@@ -36,7 +36,8 @@ ENTITY_MAP = {
     "CSCO": ["cisco"],
     "RTX": ["raytheon", "rtx"],
     "NOC": ["northrop grumman", "northrop"],
-    "GD": ["general dynamics"]
+    "GD": ["general dynamics"],
+    "TMO": ["thermo fisher", "thermo fisher scientific"]
 }
 
 PADRES_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
@@ -386,7 +387,7 @@ def run_agent():
         "Active Catalysts Data: " + str(catalysts),
         "- IF Active Catalysts Data has items (not empty):",
         "  Render a 15% enlarged alert container spanning full width above the 3 columns:",
-        "  padding 18px 26px; margin-bottom: 22px; border-radius: 12px;",
+        "  padding 18px 26px; margin-bottom 22px; border-radius: 12px;",
         "  display flex; align-items center; justify-content space-between;",
         "  background #fff5f5; border 3px solid #ef4444;",
         "  animation pulse-alert 1.5s infinite;",
