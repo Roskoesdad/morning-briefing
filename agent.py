@@ -49,7 +49,7 @@ PADRES_KEYS = [
 ]
 
 def get_fin_url(t):
-    return "https://finance.yahoo.com/quote/" + str(t) + "/"
+    return f"https://finance.yahoo.com/quote/{t}/"
 
 def extract_thumb(e, cat="general"):
     if "media_content" in e and e.media_content:
@@ -116,7 +116,7 @@ def scrape_mlb():
                 title = a.get_text(strip=True)
                 if "/news/" in href and len(title) > 20 and title not in seen:
                     seen.add(title)
-                    link = href if href.startswith("http") else ("https://www.mlb.com" + href)
+                    link = href if href.startswith("http") else f"https://www.mlb.com{href}"
                     is_p = any(k in title.lower() for k in PADRES_KEYS) or "padres" in href
                     if is_p:
                         padres.append({"title": title, "link": link, "image": PADRES_LOGO})
@@ -225,7 +225,7 @@ def get_catalyst_alerts():
                         "type": "DoD Procurement / Defense Contract Award",
                         "vol_ratio": f"{vol_ratio:.1f}x",
                         "pct": f"{pct_val:+.2f}%",
-                        "summary": "Confirmed federal procurement award identified. Volume: " + f"{vol_ratio:.1f}x average.",
+                        "summary": f"Confirmed federal procurement award identified. Volume: {vol_ratio:.1f}x average.",
                         "url": get_fin_url(ticker)
                     })
                 elif vol_ratio >= 1.75 and pct_val >= 2.0:
@@ -235,7 +235,7 @@ def get_catalyst_alerts():
                         "type": "Institutional Volume Breakout",
                         "vol_ratio": f"{vol_ratio:.1f}x",
                         "pct": f"{pct_val:+.2f}%",
-                        "summary": "Institutional accumulation detected (" + f"{vol_ratio:.1f}x normal volume) on upward move.",
+                        "summary": f"Institutional accumulation detected ({vol_ratio:.1f}x normal volume) on upward move.",
                         "url": get_fin_url(ticker)
                     })
         except Exception:
@@ -286,25 +286,81 @@ def get_available_flash_models():
     return preferred
 
 def get_js():
-    j1 = "<script>\n"
-    j2 = "async function updateWeather(){\n"
-    j3 = "  const c = document.getElementById('weather-forecast-list');\n"
-    j4 = "  if(!c) return;\n"
-    j5 = "  try{\n"
-    j6 = "    const u = 'https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FLos_Angeles&forecast_days=14';\n"
-    j7 = "    const r = await fetch(u); const d = await r.json(); let h = '';\n"
-    j8 = "    const codes = {0:'☀️ Clear', 1:'🌤️ Mostly Clear', 2:'⛅ Pt Cloudy', 3:'☁️ Overcast', 45:'🌫️ Fog', 48:'🌫️ Fog', 51:'🌦️ Light Drizzle', 53:'🌦️ Drizzle', 55:'🌧️ Heavy Drizzle', 61:'🌧️ Light Rain', 63:'🌧️ Rain', 65:'🌧️ Heavy Rain', 80:'🌦️ Showers', 81:'🌧️ Heavy Showers', 95:'⛈️ Storm'};\n"
-    j9 = "    for(let i=0; i<d.daily.time.length; i++){\n"
-    j10 = "      const dt = new Date(d.daily.time[i] + 'T12:00:00');\n"
-    j11 = "      const day = i===0 ? 'Today' : dt.toLocaleDateString('en-US', {weekday:'short'});\n"
-    j12 = "      const md = (dt.getMonth()+1) + '/' + dt.getDate();\n"
-    j13 = "      const max = Math.round(d.daily.temperature_2m_max[i]);\n"
-    j14 = "      const min = Math.round(d.daily.temperature_2m_min[i]);\n"
-    j15 = "      const code = d.daily.weathercode[i];\n"
-    j16 = "      const prob = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : 0;\n"
-    j17 = "      const inch = d.daily.precipitation_sum ? d.daily.precipitation_sum[i] : 0;\n"
-    j18 = "      let desc = codes[code] || '🌤️ Fair';\n"
-    j19 = "      if(prob >= 35 || inch >= 0.02){\n"
-    j20 = "        if(!desc.includes('Rain') && !desc.includes('Drizzle') && !desc.includes('Showers')) desc = '🌦️ Rain (' + prob + '%)';\n"
-    j21 = "        else desc += ' (' + prob + '%)';\n"
-    j22 = "      }\n
+    with open("widget.js", "r", encoding="utf-8") as f:
+        return f"<script>\n{f.read()}\n</script>"
+
+def run_agent():
+    print("Collecting news feeds...")
+    world = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
+    
+    print("Fetching FOX 5 San Diego local news...")
+    sd = fetch_fox5_news()
+    
+    padres, mlb = fetch_padres_stories()
+    ai = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 10, "ai")
+
+    print("Scanning high-conviction catalysts & federal procurement...")
+    catalysts = get_catalyst_alerts()
+    print("Detected active signals:", len(catalysts))
+
+    holdings = get_quotes(HOLDINGS)
+    watchlist = get_quotes(WATCHLIST)
+
+    prompt_data = {
+        "catalysts": catalysts,
+        "padres": padres,
+        "mlb": mlb,
+        "world": world,
+        "sd": sd,
+        "ai": ai,
+        "holdings": holdings,
+        "watchlist": watchlist
+    }
+
+    instruction = (
+        "Generate a complete, single-page HTML executive briefing dashboard.\n"
+        "Data payload in JSON format:\n"
+        + json.dumps(prompt_data) + "\n\n"
+        "MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:\n"
+        "1. NO TABS. Display all content in open, simultaneous side-by-side split panels.\n"
+        "2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.\n"
+        "3. CSS KEYFRAME: @keyframes pulse-alert { 0%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} 50%{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);} 100%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} }\n"
+        "4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning the full width above the three columns (padding 18px 26px, margin-bottom 22px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.\n"
+        "5. THREE-COLUMN TOP LEVEL LAYOUT:\n"
+        "   - LEFT (270px width): 'Spring Valley 14-Day Forecast' card. Vertically expand card downward alongside center feed. Contains <div id='weather-forecast-list' style='display:flex;flex-direction:column;justify-content:space-between;height:100%;'>Loading forecast...</div>\n"
+        "   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Enterprise M&A' (2-column card grid of 10 tech items with 50x50 thumbnails).\n"
+        "   - RIGHT (330px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto) listing ALL items in 'holdings' sorted descending with ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card listing all items in 'watchlist'.\n"
+        "6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.\n"
+        "7. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."
+    )
+
+    models = get_available_flash_models()
+    resp = None
+    for m in models:
+        try:
+            print("Calling model:", m)
+            resp = client.models.generate_content(model=m, contents=instruction)
+            if resp and resp.text:
+                break
+        except Exception as err:
+            print("Model retry error:", str(err))
+            time.sleep(4)
+
+    if not resp or not resp.text:
+        raise RuntimeError("Generation failed across all available models.")
+
+    html = resp.text.replace("```html", "").replace("```", "").strip()
+    js = get_js()
+    if "[[WEATHER_AND_PADRES_JS]]" in html:
+        html = html.replace("[[WEATHER_AND_PADRES_JS]]", js)
+    elif "</body>" in html:
+        html = html.replace("</body>", f"{js}</body>")
+    else:
+        html += js
+
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html)
+    print("index.html successfully updated!")
+
+if __name__ == "__main__":
+    run_agent()
