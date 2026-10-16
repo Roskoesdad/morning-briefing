@@ -52,10 +52,21 @@ def get_fin_url(t):
     return "https://finance.yahoo.com/quote/" + str(t) + "/"
 
 def extract_thumb(e, cat="general"):
-    if "media_thumbnail" in e and e.media_thumbnail:
-        return e.media_thumbnail[0].get("url", "")
     if "media_content" in e and e.media_content:
-        return e.media_content[0].get("url", "")
+        for m in e.media_content:
+            u = m.get("url", "")
+            if u and ("jpg" in u or "png" in u or "jpeg" in u or "webp" in u):
+                return u
+    if "media_thumbnail" in e and e.media_thumbnail:
+        for m in e.media_thumbnail:
+            u = m.get("url", "")
+            if u:
+                return u
+    if "enclosures" in e and e.enclosures:
+        for enc in e.enclosures:
+            u = enc.get("href", "")
+            if u and ("jpg" in u or "png" in u or "jpeg" in u or "webp" in u):
+                return u
     c = e.get("content", [{}])[0].get("value", "") or e.get("description", "")
     m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', c)
     if m:
@@ -71,7 +82,7 @@ def fetch_rss(url, limit=10, cat="general"):
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0"}
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         )
         fd = urllib.request.urlopen(req, timeout=8).read()
         f = feedparser.parse(fd)
@@ -142,6 +153,26 @@ def fetch_padres_stories():
                 seen.add(item["title"])
                 p_final.append(item)
     return p_final[:5], mlb[:5]
+
+def fetch_fox5_news():
+    feeds = [
+        "https://fox5sandiego.com/news/feed/",
+        "https://fox5sandiego.com/feed/"
+    ]
+    seen_titles = set()
+    items = []
+    for f_url in feeds:
+        fetched = fetch_rss(f_url, 8, "general")
+        for it in fetched:
+            t = it["title"]
+            if t not in seen_titles and len(t) > 10:
+                seen_titles.add(t)
+                items.append(it)
+                if len(items) >= 5:
+                    break
+        if len(items) >= 5:
+            break
+    return items[:5]
 
 def get_catalyst_alerts():
     signals = []
@@ -343,109 +374,4 @@ def get_js():
         "    } else if (s === 'Final') {\n",
         "      b.innerHTML = '🏁 <strong>FINAL:</strong> ' +\n",
         "        a + ' ' + as + ' - ' + h + ' ' + hs;\n",
-        "    } else {\n",
-        "      b.innerHTML = '⚾ <strong>Upcoming:</strong> ' + a + ' @ ' + h;\n",
-        "    }\n",
-        "  } catch (e) {\n",
-        "    b.innerHTML = 'Padres live feed standby.';\n",
-        "  }\n",
-        "}\n",
-        "updateWeather();\n",
-        "updatePadres();\n",
-        "setInterval(updatePadres, 30000);\n",
-        "</script>\n"
-    ]
-    return "".join(js_chunks)
-
-def run_agent():
-    print("Collecting news feeds...")
-    world = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
-    sd = fetch_rss("https://www.cbs8.com/feeds/syndication/rss/news/local", 5)
-    padres, mlb = fetch_padres_stories()
-    ai = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 10, "ai")
-
-    print("Scanning high-conviction catalysts & federal procurement...")
-    catalysts = get_catalyst_alerts()
-    print("Detected active signals:", len(catalysts))
-
-    holdings = get_quotes(HOLDINGS)
-    watchlist = get_quotes(WATCHLIST)
-
-    p_lines = [
-        "Generate a single HTML dashboard document.",
-        "IMPORTANT RULES ON TABS AND CONDENSED VIEWS:",
-        "- DO NOT USE TABS. NEVER CREATE TAB BUTTONS (e.g. no 'World | San Diego' tabs, no 'Padres | MLB' tabs).",
-        "- All sections must display simultaneously in open, side-by-side split panels as detailed below.",
-        "PAGE STYLING: Background: #f1f5f9; Cards: #ffffff; Border: 1px solid #e2e8f0; Border-radius: 12px; Padding: 18px;",
-        "Layout: width: 98vw; max-width: 1820px; margin: 0 auto; Start at top edge without header banner.",
-        "CSS KEYFRAME ANIMATION:",
-        "@keyframes pulse-alert {",
-        "  0% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); }",
-        "  50% { border-color:#b91c1c; box-shadow:0 0 18px 5px rgba(239,68,68,0.55); }",
-        "  100% { border-color:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.65); }",
-        "}",
-        "CATALYST RADAR ALERT BANNER (TOP OF PAGE):",
-        "Active Catalysts Data: " + str(catalysts),
-        "- IF Active Catalysts Data has items (not empty):",
-        "  Render 15% enlarged alert container spanning full width above 3 columns: padding 18px 26px; margin-bottom: 22px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: #fff5f5; border: 3px solid #ef4444; animation: pulse-alert 1.5s infinite;",
-        "  Left side: badge <span style='background:#dc2626;color:#fff;font-size:14px;font-weight:800;padding:6px 14px;border-radius:6px;text-transform:uppercase;'>🚨 Catalyst Radar Alert</span> <strong style='font-size:20px;color:#991b1b;margin-left:12px;'>item.ticker</strong> <span style='font-size:15px;color:#b91c1c;'>(item.type)</span> <div style='font-size:15px;color:#1e293b;margin-top:6px;'>item.summary</div>",
-        "  Right side: <a href='item.url' target='_blank' style='background:#dc2626;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:8px;text-decoration:none;white-space:nowrap;'>Review Filing / Catalyst →</a>",
-        "- IF Active Catalysts Data is [] (empty): DO NOT RENDER ANY BANNER OR CONTAINER.",
-        "THREE COLUMNS TOP-LEVEL LAYOUT (FLEX ROW OR GRID):",
-        "1. LEFT COLUMN (WIDTH: 270px): 'Spring Valley 14-Day Forecast'",
-        "   - Vertically stretch card to fill downward alongside the center feed. Card height: 100%;",
-        "   - Container: <div id='weather-forecast-list' style='display:flex; flex-direction:column; justify-content:space-between; height:100%;'>Loading forecast...</div>",
-        "2. CENTER / MAIN COLUMN (FLEX: 1, WIDE):",
-        "   - TOP CARD: 'Sports Desk: San Diego Padres & MLB'",
-        "     * Sub-header container with 2 equal side-by-side columns (NO TABS, display: grid; grid-template-columns: 1fr 1fr; gap: 20px;):",
-        "       - LEFT SIDE: 'San Diego Padres Updates' + <div id='padres-live-box' style='padding:10px; border-radius:8px; background:#f8fafc; border:1px solid #cbd5e1; margin-bottom:12px; font-weight:700;'>Checking Padres status...</div> + list of 5 Padres articles from " + str(padres) + " with 46x46 SD logo and clickable link.",
-        "       - RIGHT SIDE: 'League-Wide MLB Stories' + list of 5 MLB articles from " + str(mlb) + " with 46x46 MLB logo and clickable link.",
-        "   - MIDDLE CARD: 'Executive News (World & San Diego)'",
-        "     * Sub-header container with 2 equal side-by-side columns (NO TABS, display: grid; grid-template-columns: 1fr 1fr; gap: 20px;):",
-        "       - LEFT SIDE: 'Top 5 World Headlines' + list of 5 items from " + str(world) + " with 46x46 thumbnail and clickable title.",
-        "       - RIGHT SIDE: 'Top 5 San Diego Local News' + list of 5 items from " + str(sd) + " with 46x46 thumbnail and clickable title.",
-        "   - BOTTOM CARD: 'AI, Big Tech & Enterprise M&A'",
-        "     * 2-column card grid of exactly 10 items from " + str(ai) + " with 50x50 thumbnail and clickable title.",
-        "3. RIGHT COLUMN (WIDTH: 330px):",
-        "   - 'Portfolio Pulse' CARD:",
-        "     * CRITICAL: NO INTERNAL SCROLLBAR. Do NOT set max-height or overflow-y: scroll/auto.",
-        "     * List ALL 21 stocks from " + str(holdings) + " completely down the page.",
-        "     * Each row is wrapped in <a href='item.url' target='_blank'> with Ticker (bold), Price, and colored % badge (+ green, - red).",
-        "   - 'Watchlist Catalyst Radar' CARD:",
-        "     * Placed directly below the Portfolio Pulse card (naturally appearing below the fold as page two).",
-        "     * List items from " + str(watchlist) + " in clickable cards with price, % badge, and catalyst summary.",
-        "Insert marker [[WEATHER_AND_PADRES_JS]] before </body>.",
-        "Output clean raw HTML without markdown ticks."
-    ]
-    prompt = "\n".join(p_lines)
-
-    models = get_available_flash_models()
-    resp = None
-    for m in models:
-        try:
-            print("Calling model:", m)
-            resp = client.models.generate_content(model=m, contents=prompt)
-            if resp and resp.text:
-                break
-        except Exception as err:
-            print("Model retry error:", str(err))
-            time.sleep(4)
-
-    if not resp or not resp.text:
-        raise RuntimeError("Generation failed across all available models.")
-
-    html = resp.text.replace("```html", "").replace("```", "").strip()
-    js = get_js()
-    if "[[WEATHER_AND_PADRES_JS]]" in html:
-        html = html.replace("[[WEATHER_AND_PADRES_JS]]", js)
-    elif "</body>" in html:
-        html = html.replace("</body>", js + "</body>")
-    else:
-        html += js
-
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html)
-    print("index.html successfully updated!")
-
-if __name__ == "__main__":
-    run_agent()
+        "    }
