@@ -55,7 +55,7 @@ def extract_thumb(e, cat="general"):
     if "media_content" in e and e.media_content:
         for m in e.media_content:
             u = m.get("url", "")
-            if u and ("jpg" in u or "png" in u or "jpeg" in u or "webp" in u):
+            if u and any(ext in u for ext in [".jpg", ".jpeg", ".png", ".webp"]):
                 return u
     if "media_thumbnail" in e and e.media_thumbnail:
         for m in e.media_thumbnail:
@@ -65,7 +65,7 @@ def extract_thumb(e, cat="general"):
     if "enclosures" in e and e.enclosures:
         for enc in e.enclosures:
             u = enc.get("href", "")
-            if u and ("jpg" in u or "png" in u or "jpeg" in u or "webp" in u):
+            if u and any(ext in u for ext in [".jpg", ".jpeg", ".png", ".webp"]):
                 return u
     c = e.get("content", [{}])[0].get("value", "") or e.get("description", "")
     m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', c)
@@ -286,92 +286,25 @@ def get_available_flash_models():
     return preferred
 
 def get_js():
-    js_chunks = [
-        "<script>\n",
-        "async function updateWeather() {\n",
-        "  const c = document.getElementById('weather-forecast-list');\n",
-        "  if (!c) return;\n",
-        "  try {\n",
-        "    const u = 'https://api.open-meteo.com/v1/forecast?' +\n",
-        "      'latitude=32.7448&longitude=-116.9989&' +\n",
-        "      'daily=weathercode,temperature_2m_max,temperature_2m_min,' +\n",
-        "      'precipitation_probability_max,precipitation_sum&' +\n",
-        "      'temperature_unit=fahrenheit&precipitation_unit=inch&' +\n",
-        "      'timezone=America%2FLos_Angeles&forecast_days=14';\n",
-        "    const r = await fetch(u);\n",
-        "    const d = await r.json();\n",
-        "    let h = '';\n",
-        "    const codes = {\n",
-        "      0: '☀️ Clear',\n",
-        "      1: '🌤️ Mostly Clear',\n",
-        "      2: '⛅ Pt Cloudy',\n",
-        "      3: '☁️ Overcast',\n",
-        "      45: '🌫️ Fog',\n",
-        "      48: '🌫️ Fog',\n",
-        "      51: '🌦️ Light Drizzle',\n",
-        "      53: '🌦️ Drizzle',\n",
-        "      55: '🌧️ Heavy Drizzle',\n",
-        "      61: '🌧️ Light Rain',\n",
-        "      63: '🌧️ Rain',\n",
-        "      65: '🌧️ Heavy Rain',\n",
-        "      80: '🌦️ Showers',\n",
-        "      81: '🌧️ Heavy Showers',\n",
-        "      95: '⛈️ Storm'\n",
-        "    };\n",
-        "    for (let i = 0; i < d.daily.time.length; i++) {\n",
-        "      const dt = new Date(d.daily.time[i] + 'T12:00:00');\n",
-        "      const day = i === 0 ? 'Today' : dt.toLocaleDateString('en-US', {weekday:'short'});\n",
-        "      const md = (dt.getMonth() + 1) + '/' + dt.getDate();\n",
-        "      const max = Math.round(d.daily.temperature_2m_max[i]);\n",
-        "      const min = Math.round(d.daily.temperature_2m_min[i]);\n",
-        "      const code = d.daily.weathercode[i];\n",
-        "      const precipProb = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : 0;\n",
-        "      const precipIn = d.daily.precipitation_sum ? d.daily.precipitation_sum[i] : 0;\n",
-        "      let desc = codes[code] || '🌤️ Fair';\n",
-        "      if (precipProb >= 35 || precipIn >= 0.02) {\n",
-        "        if (!desc.includes('Rain') && !desc.includes('Drizzle') && !desc.includes('Showers')) {\n",
-        "          desc = '🌦️ Rain (' + precipProb + '%)';\n",
-        "        } else {\n",
-        "          desc += ' (' + precipProb + '%)';\n",
-        "        }\n",
-        "      }\n",
-        "      h += '<div style=\"display:flex;justify-content:space-between;' +\n",
-        "        'align-items:center;padding:14px 6px;' +\n",
-        "        'border-bottom:1px solid #f1f5f9;font-size:14px;\">' +\n",
-        "        '<div><strong>' + day + '</strong> ' +\n",
-        "        '<span style=\"font-size:11px;color:#94a3b8;\">' + md + '</span></div>' +\n",
-        "        '<span style=\"color:#64748b;font-size:13px;\">' + desc + '</span>' +\n",
-        "        '<strong>' + max + '° ' +\n",
-        "        '<span style=\"font-weight:400;color:#94a3b8;font-size:12px;\">/ ' +\n",
-        "        min + '°</span></strong></div>';\n",
-        "    }\n",
-        "    c.innerHTML = h;\n",
-        "  } catch (e) {\n",
-        "    c.innerHTML = '<div style=\"color:#94a3b8;\">Weather syncing...</div>';\n",
-        "  }\n",
-        "}\n",
-        "async function updatePadres() {\n",
-        "  const b = document.getElementById('padres-live-box');\n",
-        "  if (!b) return;\n",
-        "  try {\n",
-        "    const u = 'https://statsapi.mlb.com/api/v1/schedule?' +\n",
-        "      'sportId=1&teamId=135&hydrate=linescore';\n",
-        "    const r = await fetch(u);\n",
-        "    const d = await r.json();\n",
-        "    if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {\n",
-        "      b.innerHTML = '⚾ <strong>Padres:</strong> Offseason / No game scheduled today.';\n",
-        "      return;\n",
-        "    }\n",
-        "    const g = d.dates[0].games[0];\n",
-        "    const s = g.status.abstractGameState;\n",
-        "    const a = g.teams.away.team.name;\n",
-        "    const h = g.teams.home.team.name;\n",
-        "    const as = g.teams.away.score || 0;\n",
-        "    const hs = g.teams.home.score || 0;\n",
-        "    if (s === 'Live') {\n",
-        "      b.innerHTML = '🔴 <span style=\"color:#dc2626;font-weight:700;\">LIVE:</span> ' +\n",
-        "        a + ' ' + as + ' @ ' + h + ' ' + hs;\n",
-        "    } else if (s === 'Final') {\n",
-        "      b.innerHTML = '🏁 <strong>FINAL:</strong> ' +\n",
-        "        a + ' ' + as + ' - ' + h + ' ' + hs;\n",
-        "    }
+    j1 = "<script>\n"
+    j2 = "async function updateWeather(){\n"
+    j3 = "  const c = document.getElementById('weather-forecast-list');\n"
+    j4 = "  if(!c) return;\n"
+    j5 = "  try{\n"
+    j6 = "    const u = 'https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FLos_Angeles&forecast_days=14';\n"
+    j7 = "    const r = await fetch(u); const d = await r.json(); let h = '';\n"
+    j8 = "    const codes = {0:'☀️ Clear', 1:'🌤️ Mostly Clear', 2:'⛅ Pt Cloudy', 3:'☁️ Overcast', 45:'🌫️ Fog', 48:'🌫️ Fog', 51:'🌦️ Light Drizzle', 53:'🌦️ Drizzle', 55:'🌧️ Heavy Drizzle', 61:'🌧️ Light Rain', 63:'🌧️ Rain', 65:'🌧️ Heavy Rain', 80:'🌦️ Showers', 81:'🌧️ Heavy Showers', 95:'⛈️ Storm'};\n"
+    j9 = "    for(let i=0; i<d.daily.time.length; i++){\n"
+    j10 = "      const dt = new Date(d.daily.time[i] + 'T12:00:00');\n"
+    j11 = "      const day = i===0 ? 'Today' : dt.toLocaleDateString('en-US', {weekday:'short'});\n"
+    j12 = "      const md = (dt.getMonth()+1) + '/' + dt.getDate();\n"
+    j13 = "      const max = Math.round(d.daily.temperature_2m_max[i]);\n"
+    j14 = "      const min = Math.round(d.daily.temperature_2m_min[i]);\n"
+    j15 = "      const code = d.daily.weathercode[i];\n"
+    j16 = "      const prob = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : 0;\n"
+    j17 = "      const inch = d.daily.precipitation_sum ? d.daily.precipitation_sum[i] : 0;\n"
+    j18 = "      let desc = codes[code] || '🌤️ Fair';\n"
+    j19 = "      if(prob >= 35 || inch >= 0.02){\n"
+    j20 = "        if(!desc.includes('Rain') && !desc.includes('Drizzle') && !desc.includes('Showers')) desc = '🌦️ Rain (' + prob + '%)';\n"
+    j21 = "        else desc += ' (' + prob + '%)';\n"
+    j22 = "      }\n
