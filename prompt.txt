@@ -1,0 +1,15 @@
+Generate a complete, single-page HTML executive briefing dashboard.
+Data payload JSON:
+__DATA_JSON__
+
+MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
+1. NO TABS. Display all content in open, simultaneous side-by-side split panels.
+2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
+3. CSS KEYFRAME: @keyframes pulse-alert { 0%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} 50%{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);} 100%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} }
+4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 18px 26px, margin-bottom 22px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.
+5. THREE-COLUMN TOP LEVEL LAYOUT:
+   - LEFT (270px width): 'Spring Valley 14-Day Forecast' card. Vertically expand card downward alongside center feed. Contains <div id='weather-forecast-list' style='display:flex;flex-direction:column;justify-content:space-between;height:100%;'>Loading forecast...</div>
+   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Snacks, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
+   - RIGHT (330px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto) listing ALL items in 'holdings' sorted descending with ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card listing all items in 'watchlist'.
+6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
+7. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks.
