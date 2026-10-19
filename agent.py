@@ -11,15 +11,14 @@ HOLDINGS = [
     "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO", "TMO"
 ]
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "WDC", "CSCO", "VRT", "AVGO"]
-DISCOVERY = ["RTX", "NOC", "GD", "BA"]
 
-ENTITY_MAP = {
-    "PLTR": ["palantir"], "MSFT": ["microsoft"], "NVDA": ["nvidia"],
-    "AMZN": ["amazon", "aws"], "EQIX": ["equinix"], "LMT": ["lockheed"],
-    "USAR": ["usa rare earth"], "VRT": ["vertiv"], "AVGO": ["broadcom"],
-    "MU": ["micron"], "CSCO": ["cisco"], "RTX": ["raytheon", "rtx"],
-    "NOC": ["northrop"], "GD": ["general dynamics"], "TMO": ["thermo fisher"]
-}
+# Broad-market scanner universe (S&P 500 & Nasdaq-100 broad market leaders)
+BROAD_MARKET = [
+    "AMD", "INTC", "QCOM", "ARM", "SMCI", "PANW", "CRWD", "NOW",
+    "ORCL", "CRM", "SNOW", "DELL", "HPE", "ANET", "UBER", "ABNB",
+    "NFLX", "DIS", "TSLA", "LLY", "UNH", "JNJ", "ABBV", "CAT",
+    "DE", "GE", "HON", "RTX", "NOC", "GD", "BA", "JPM", "GS", "MS"
+]
 
 P_KEYS = ["padres", "san diego", "friars", "petco", "tatis", "machado", "merrill", "cease"]
 P_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
@@ -174,33 +173,53 @@ def fetch_fox5():
     return out[:5]
 
 def get_catalysts():
-    signals, dod = [], ""
-    try:
-        req = urllib.request.Request("https://www.defense.gov/News/Contracts/", headers={"User-Agent": "Mozilla/5.0"})
-        dod = BeautifulSoup(urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore"), "html.parser").get_text().lower()
-    except Exception:
-        pass
+    signals = []
     seen = set()
-    for tkr in (HOLDINGS + WATCHLIST + DISCOVERY):
+    scan_universe = HOLDINGS + WATCHLIST + BROAD_MARKET
+    
+    for tkr in scan_universe:
         if "-USD" in tkr or tkr in seen:
             continue
         seen.add(tkr)
-        has_c = any(a in dod for a in ENTITY_MAP.get(tkr, [tkr.lower()]))
         try:
             t = yf.Ticker(tkr)
-            h = t.history(period="1mo")
-            if len(h) >= 15:
-                avg_v, tod_v = float(h["Volume"].iloc[:-1].mean()), float(h["Volume"].iloc[-1])
-                pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
-                vr = (tod_v / avg_v) if avg_v > 0 else 1.0
-                grp = "Current Portfolio" if tkr in HOLDINGS else ("Active Watchlist" if tkr in WATCHLIST else "Discovery Opportunity")
-                url = f"https://finance.yahoo.com/quote/{tkr}"
-                if has_c and pct >= 0:
-                    signals.append({"ticker": tkr, "group": grp, "type": "DoD Award", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Federal award identified. Volume: {vr:.1f}x.", "url": url})
-                elif vr >= 1.75 and pct >= 2.0:
-                    signals.append({"ticker": tkr, "group": grp, "type": "Volume Breakout", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Volume breakout ({vr:.1f}x) on upward move.", "url": url})
+            fi = getattr(t, "fast_info", None)
+            info = getattr(t, "info", {}) or {}
+            
+            price = fi.last_price if fi and fi.last_price else info.get("currentPrice")
+            high_52 = fi.year_high if fi and fi.year_high else info.get("fiftyTwoWeekHigh")
+            target = info.get("targetMeanPrice")
+            rec = str(info.get("recommendationKey", "")).lower()
+            num_analysts = info.get("numberOfAnalystOpinions", 0)
+            
+            if price and target and target > 0 and price > 0:
+                upside = ((target - price) / price) * 100.0
+                pullback = (((high_52 - price) / high_52) * 100.0) if high_52 else 0.0
+                
+                # Signal: Wall Street Buy + 15%+ upside + 4%+ off recent peak
+                if rec in ["buy", "strong_buy"] and upside >= 15.0 and pullback >= 4.0:
+                    if tkr in HOLDINGS:
+                        grp = "Current Portfolio"
+                    elif tkr in WATCHLIST:
+                        grp = "Active Watchlist"
+                    else:
+                        grp = "Broad Market Opportunity"
+                    
+                    url = f"https://finance.yahoo.com/quote/{tkr}"
+                    signals.append({
+                        "ticker": tkr,
+                        "group": grp,
+                        "type": "Expert Buy Target",
+                        "upside_num": upside,
+                        "vol_ratio": f"+{upside:.0f}% Up",
+                        "pct": f"${price:.2f}",
+                        "summary": f"Wall St Consensus: {rec.upper().replace('_', ' ')} ({num_analysts} analysts). Target: ${target:.2f} ({upside:+.1f}% upside).",
+                        "url": url
+                    })
         except Exception:
             pass
+            
+    signals.sort(key=lambda x: x["upside_num"], reverse=True)
     return signals[:2]
 
 def get_quotes(tickers):
