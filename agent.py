@@ -12,7 +12,6 @@ HOLDINGS = [
 ]
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "WDC", "CSCO", "VRT", "AVGO"]
 
-# Broad-market scanner universe (S&P 500 & Nasdaq-100 broad market leaders)
 BROAD_MARKET = [
     "AMD", "INTC", "QCOM", "ARM", "SMCI", "PANW", "CRWD", "NOW",
     "ORCL", "CRM", "SNOW", "DELL", "HPE", "ANET", "UBER", "ABNB",
@@ -196,7 +195,7 @@ def get_catalysts():
                 upside = ((target - price) / price) * 100.0
                 pullback = (((high_52 - price) / high_52) * 100.0) if high_52 else 0.0
                 
-                # Signal: Wall Street Buy + 15%+ upside + 4%+ off recent peak
+                # Signal: Wall Street Buy/Strong Buy + >= 15% upside + >= 4% pullback from high
                 if rec in ["buy", "strong_buy"] and upside >= 15.0 and pullback >= 4.0:
                     if tkr in HOLDINGS:
                         grp = "Current Portfolio"
@@ -205,7 +204,9 @@ def get_catalysts():
                     else:
                         grp = "Broad Market Opportunity"
                     
-                    url = f"https://finance.yahoo.com/quote/{tkr}"
+                    # Direct link to Wall Street Analyst Forecast & Analysis breakdown
+                    analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
+                    
                     signals.append({
                         "ticker": tkr,
                         "group": grp,
@@ -213,8 +214,12 @@ def get_catalysts():
                         "upside_num": upside,
                         "vol_ratio": f"+{upside:.0f}% Up",
                         "pct": f"${price:.2f}",
-                        "summary": f"Wall St Consensus: {rec.upper().replace('_', ' ')} ({num_analysts} analysts). Target: ${target:.2f} ({upside:+.1f}% upside).",
-                        "url": url
+                        "consensus": rec.upper().replace('_', ' '),
+                        "target_price": f"${target:.2f}",
+                        "current_price": f"${price:.2f}",
+                        "analysts": num_analysts,
+                        "summary": f"{tkr} Consensus {rec.upper().replace('_', ' ')} at ${price:.2f} (Target ${target:.2f}, +{upside:.1f}% upside, {num_analysts} analysts)",
+                        "url": analysis_url
                     })
         except Exception:
             pass
@@ -285,7 +290,12 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 1. NO TABS. Display all content in open, simultaneous side-by-side split panels.
 2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
-4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 16px 24px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.
+4. CATALYST RADAR BANNER:
+   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between, border-radius 14px).
+   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background #ef4444, color #ffffff, font-weight 700, padding 6px 12px, border-radius 6px, font-size 13px, margin-right 16px).
+   - CENTER/CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <strong>item.ticker</strong>: Consensus item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>.
+   - RIGHT SIDE of banner: Tag 'HIGH CONVICTION SETUP' (color #b91c1c, font-weight 700, font-size 12px, letter-spacing 0.5px).
+   - If 'catalysts' is empty, render nothing.
 5. THREE-COLUMN TOP LEVEL LAYOUT:
    - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
    - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Ars Technica, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
