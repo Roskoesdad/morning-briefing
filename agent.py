@@ -40,10 +40,10 @@ DEFAULT_JS = """async function updateWeather(){
       const prob=d.daily.precipitation_probability_max?d.daily.precipitation_probability_max[i]:0;
       let desc=codes[d.daily.weathercode[i]]||'🌤️ Fair';
       if(prob>=35)desc='🌦️ Rain ('+prob+'%)';
-      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 6px;border-bottom:1px solid #f1f5f9;font-size:14px;"><div><strong>'+day+'</strong> <span style="font-size:11px;color:#94a3b8;">'+md+'</span></div><span style="color:#64748b;font-size:13px;">'+desc+'</span><strong>'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:12px;">/ '+min+'°</span></strong></div>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:12px;line-height:1.2;"><div><strong>'+day+'</strong> <span style="font-size:10px;color:#94a3b8;">'+md+'</span></div><span style="color:#64748b;font-size:11px;">'+desc+'</span><strong style="font-size:12px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:10px;">/ '+min+'°</span></strong></div>';
     }
     c.innerHTML=h;
-  }catch(e){c.innerHTML='<div style="color:#94a3b8;">Weather syncing...</div>';}
+  }catch(e){c.innerHTML='<div style="color:#94a3b8;font-size:12px;">Weather syncing...</div>';}
 }
 async function updatePadres(){
   const b=document.getElementById('padres-live-box');if(!b)return;
@@ -67,7 +67,7 @@ PROMPT_B64 = (
     "Y29udGVudCBpbiBvcGVuLCBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIHNwbGl0IHBhbmVscy4K"
     "Mi4gRlVMTC1XSURUSCBMQVlPVVQ6IHdpZHRoIDk4dnc7IG1heC13aWR0aDogMTgyMHB4OyBtYXJn"
     "aW46IDAgYXV0bzsgcGFnZSBiYWNrZ3JvdW5kICNmMWY1Zjk7IGNhcmRzICNmZmZmZmYgd2l0aCAx"
-    "cHggc29saWQgI2UyZThmMCwgYm9yZGVyLXJhZGl1cyAxMnB4LCBwYWRkaW5nIDE4cHguIFN0YXJ0"
+    "cHggc29saWQgI2UyZThmMCwgYm9yZGVyLXJhZGl1cyAxMnB4LCBwYWRkaW5nIDE2cHguIFN0YXJ0"
     "IGF0IHRvcCBlZGdlLgozLiBDU1MgS0VZRlJBTUU6IEBrZXlmcmFtZXMgcHVsc2UtYWxlcnQgeyAw"
     "JXtib3JkZXItY29sb3I6I2VmNDQ0NDtib3gtc2hhZG93OjAgMCAwIDAgcmdiYSgyMzksNjgsNjgs"
     "MC42NSk7fSA1MCUre2JvcmRlci1jb2xvcjojYjkxYzFjO2JveC1zaGFkb3c6MCAwIDE4cHggNXB4"
@@ -75,36 +75,38 @@ PROMPT_B64 = (
     "ZG93OjAgMCAwIDAgcmdiYSgyMzksNjgsNjgsMC42NSk7fSB9CjQuIENBVEFMWVNUIFJBREFSIEJB"
     "Tk5FUjogSWYgJ2NhdGFseXN0cycgYXJyYXkgaXMgbm9uLWVtcHR5LCByZW5kZXIgYW4gYWxlcnQg"
     "Y29udGFpbmVyIHNwYW5uaW5nIGZ1bGwgd2lkdGggYWJvdmUgdGhlIHRocmVlIGNvbHVtbnMgKHBh"
-    "ZGRpbmcgMThweCAyNnB4LCBtYXJnaW4tYm90dG9tIDIycHgsIGJvcmRlciAzcHggc29saWQgI2Vm"
+    "ZGRpbmcgMTZweCAyNHB4LCBtYXJnaW4tYm90dG9tIDIwcHgsIGJvcmRlciAzcHggc29saWQgI2Vm"
     "NDQ0NCwgYmFja2dyb3VuZCAjZmZmNWY1LCBhbmltYXRpb24gcHVsc2UtYWxlcnQgMS41cyBpbmZp"
     "bml0ZSwgZGlzcGxheSBmbGV4LCBhbGlnbi1pdGVtcyBjZW50ZXIsIGp1c3RpZnktY29udGVudCBz"
     "cGFjZS1iZXR3ZWVuKS4gSWYgZW1wdHksIHJlbmRlciBub3RoaW5nLgo1LiBUSFJFRS1DT0xVTU4g"
-    "VE9QIExFVkVMIExBWU9VVDoKICAgLSBMRUZUICgyNzBweCB3aWR0aCk6ICdTcHJpbmcgVmFsbGV5"
-    "IDE0LURheSBGb3JlY2FzdCcgY2FyZC4gVmVydGljYWxseSBleHBhbmQgY2FyZCBkb3dud2FyZCBh"
-    "bG9uZ3NpZGUgY2VudGVyIGZlZWQuIENvbnRhaW5zIDxkaXYgaWQ9J3dlYXRoZXItZm9yZWNhc3Qt"
-    "bGlzdCcgc3R5bGU9J2Rpc3BsYXk6ZmxleDtmbGV4LWRpcmVjdGlvbjpjb2x1bW47anVzdGlmeS1j"
-    "b250ZW50OnNwYWNlLWJldHdlZW47aGVpZ2h0OjEwMCU7Jz5Mb2FkaW5nIGZvcmVjYXN0Li4uPC9k"
-    "aXY+CiAgIC0gQ0VOVEVSIChmbGV4OiAxKTogVG9wIGNhcmQgJ1Nwb3J0cyBEZXNrOiBTYW4gRGll"
-    "Z28gUGFkcmVzICYgTUxCJyB3aXRoIDIgc2ltdWx0YW5lb3VzIHNpZGUtYnktc2lkZSBjb2x1bW5z"
-    "IChsZWZ0OiBQYWRyZXMgd2l0aCA8ZGl2IGlkPSdwYWRyZXMtbGl2ZS1ib3gnPjwvZGl2PiBhbmQg"
-    "NQogICAgIFBhZHJlcyBsaW5rcyB3aXRoIDQ2eDQ2IFNEIGxvZ287IHJpZ2h0OiA1IE1MQiBsaW5r"
-    "cyB3aXRoIDQ2eDQ2IE1MQiBsb2dvKS4gTWlkZGxlIGNhcmQgJ0V4ZWN1dGl2ZSBOZXdzIChXb3Js"
-    "ZCAmIFNhbiBEaWVnbyknIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMg"
-    "KGxlZnQ6IFRvcCA1IFdvcmxkIEhlYWRsaW5lczsgcmlnaHQ6IFRvcCA1IEZPWCBRUjUgU2FuIERp"
-    "ZWdvIExvY2FsIE5ld3Mgd2l0aCBzdG9yeSBpbWFnZSB0aHVtYm5haWxzKS4gQm90dG9tIGNhcmQg"
-    "J0FJLCBCaWcgVGVjaCAmIEluZHVzdHJ5IEJyZWFrdGhyb3VnaHMnICgyLWNvbHVtbiBjYXJkIGdy"
-    "aWQgb2YgZXhhY3RseSAxMCBpdGVtcyBmcm9tICdhaSc6IDQgZnJvbSBBcnMgVGVjaG5pY2EsIDQg"
-    "ZnJvbSBUaGUgRGVjb2RlciwgMiBmcm9tIFRlY2hDcnVuY2gsIGVhY2ggd2l0aCA1MHg1MCB0aHVt"
-    "Ym5haWwgYW5kIGNsaWNrYWJsZSB0aXRsZSkuCiAgIC0gUklHSFQgKDMzMHB4IHdpZHRoKTogVG9w"
-    "IGNhcmQgJ1BvcnRmb2xpbyBQdWxzZScgd2l0aCBOTyBJTlRFUk5BTCBTQ1JPTExCQVIgKG5vIG1h"
-    "eC1oZWlnaHQsIG5vIG92ZXJmbG93LXk6IGF1dG8pIGxpc3RpbmcgQUxMIGl0ZW1zIGluICdob2xk"
-    "aW5ncycgc29ydGVkIGRlc2NlbmRpbmcgd2l0aCB0aWNrZXIsIHByaWNlLCBhbmQgJSBiYWRnZS4g"
-    "RGlyZWN0bHkgYmVsb3cgc2l0cyAnV2F0Y2hsaXN0IENhdGFseXN0IFJhZGFyJyBjYXJkIGxpc3Rp"
-    "bmcgYWxsIGl0ZW1zIGluICd3YXRjaGxpc3QnLgo2LiBJbnNlcnQgbWFya2VyIFtbV0VBVEhFUl9B"
-    "TkRfUEFEUkVTX0pTXV0gaW1tZWRpYXRlbHkgYmVmb3JlIDwvYm9keT4uCjcuIFJldHVybiBPTkxZ"
-    "IGNsZWFuLCB2YWxpZCByYXcgSFRNTCBzdGFydGluZyB3aXRoIDwhRE9DVFlQRSBodG1sPiBhbmQg"
-    "ZW5kaW5nIHdpdGggPC9odG1sPi4gRG8gbm90IGluY2x1ZGUgbWFya2Rvd24gY29kZSBibG9jayBi"
-    "YWNrdGlja3Mu"
+    "VE9QIExFVkVMIExBWU9VVDoKICAgLSBMRUZUICgyNDBweCB3aWR0aCwgYWxpZ24tc2VsZjogZmxl"
+    "eC1zdGFydCk6ICdTcHJpbmcgVmFsbGV5IDE0LURheScgY2FyZC4gS2VlcCB0aWdodCwgZG8gTk9U"
+    "IHN0cmV0Y2ggdmVydGljYWxseSwgc28gaXQgZml0cyBuZWF0bHkgb24gcGFnZSAxLiBDb250YWlu"
+    "cyA8ZGl2IGlkPSd3ZWF0aGVyLWZvcmVjYXN0LWxpc3QnPkxvYWRpbmcgZm9yZWNhc3QuLi48L2Rp"
+    "dj4KICAgLSBDRU5URVIgKGZsZXg6IDEpOiBUb3AgY2FyZCAnU3BvcnRzIERlc2s6IFNhbiBEaWVn"
+    "byBQYWRyZXMgJiBNTEInIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMg"
+    "KGxlZnQ6IFBhZHJlcyB3aXRoIDxkaXYgaWQ9J3BhZHJlcy1saXZlLWJveCc+PC9kaXY+IGFuZCA1"
+    "IFBhZHJlcyBsaW5rcyB3aXRoIDQ2eDQ2IFNEIGxvZ287IHJpZ2h0OiA1IE1MQiBsaW5rcyB3aXRo"
+    "IDQ2eDQ2IE1MQiBsb2dvKS4gTWlkZGxlIGNhcmQgJ0V4ZWN1dGl2ZSBOZXdzIChXb3JsZCAmIFNh"
+    "biBEaWVnbyknIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMgKGxlZnQ6"
+    "IFRvcCA1IFdvcmxkIEhlYWRsaW5lczsgcmlnaHQ6IFRvcCA1IEZPWCBRUjUgU2FuIERpZWdvIExv"
+    "Y2FsIE5ld3Mgd2l0aCBzdG9yeSBpbWFnZSB0aHVtYm5haWxzKS4gQm90dG9tIGNhcmQgJ0FJLCBC"
+    "aWcgVGVjaCAmIEluZHVzdHJ5IEJyZWFrdGhyb3VnaHMnICgyLWNvbHVtbiBjYXJkIGdyaWQgb2Yg"
+    "ZXhhY3RseSAxMCBpdGVtcyBmcm9tICdhaSc6IDQgZnJvbSBBcnMgVGVjaG5pY2EsIDQgZnJvbSBU"
+    "aGUgRGVjb2RlciwgMiBmcm9tIFRlY2hDcnVuY2gsIGVhY2ggd2l0aCA1MHg1MCB0aHVtYm5haWwg"
+    "YW5kIGNsaWNrYWJsZSB0aXRsZSkuCiAgIC0gUklHSFQgKDM1MHB4IHdpZHRoKTogVG9wIGNhcmQg"
+    "J1BvcnRmb2xpbyBQdWxzZScgd2l0aCBOTyBJTlRFUk5BTCBTQ1JPTExCQVIgKG5vIG1heC1oZWln"
+    "aHQsIG5vIG92ZXJmbG93LXk6IGF1dG8pLiBFYWNoIGhvbGRpbmcgaXRlbSBNVVNUIGJlIGFuIGFj"
+    "dGl2ZSBjbGlja2FibGUgaHlwZXJsaW5rIDxhIGhyZWY9J3VybCcgdGFyZ2V0PSdfYmxhbmsnIHJl"
+    "bD0nbm9vcGVuZXIgbm9yZWZlcnJlcicgc3R5bGU9J2Rpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRl"
+    "bnQ6c3BhY2UtYmV0d2VlbjthbGlnbi1pdGVtczpjZW50ZXI7cGFkZGluZzo4cHggMDtib3JkZXIt"
+    "Ym90dG9tOjFweCBzb2xpZCAjZjFmNWY5O3RleHQtZGVjb3JhdGlvbjpub25lO2NvbG9yOmluaGVy"
+    "aXQ7Jz4uIFNob3cgdGlja2VyLCBwcmljZSwgYW5kICUgYmFkZ2UuIERpcmVjdGx5IGJlbG93IHNp"
+    "dHMgJ1dhdGNobGlzdCBDYXRhbHlzdCBSYWRhcicgY2FyZCB3aXRoIHRoZSBzYW1lIGNsaWNrYWJs"
+    "ZSBzdHlsZS4KNi4gSW5zZXJ0IG1hcmtlciBbW1dFQVRIRVJfQU5EX1BBRFJFU19KU11dIGltbWVk"
+    "aWF0ZWx5IGJlZm9yZSA8L2JvZHk+Lgo3LiBSZXR1cm4gT05MWSBjbGVhbiwgdmFsaWQgcmF3IEhU"
+    "TUwgc3RhcnRpbmcgd2l0aCA8IURPQ1RZUEUgaHRtbD4gYW5kIGVuZGluZyB3aXRoIDwvaHRtbD4u"
+    "IERvIG5vdCBpbmNsdWRlIG1hcmtkb3duIGNvZGUgYmxvY2sgYmFja3RpY2tzLg=="
 )
 
 def extract_thumb(e, cat="general"):
@@ -201,7 +203,7 @@ def get_catalysts():
                 pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
                 vr = (tod_v / avg_v) if avg_v > 0 else 1.0
                 grp = "Current Portfolio" if tkr in HOLDINGS else ("Active Watchlist" if tkr in WATCHLIST else "Discovery Opportunity")
-                url = f"https://finance.yahoo.com/quote/{tkr}/"
+                url = f"https://finance.yahoo.com/quote/{tkr}"
                 if has_c and pct >= 0:
                     signals.append({"ticker": tkr, "group": grp, "type": "DoD Award", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Federal award identified. Volume: {vr:.1f}x.", "url": url})
                 elif vr >= 1.75 and pct >= 2.0:
@@ -226,7 +228,14 @@ def get_quotes(tickers):
                     chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
         except Exception:
             pass
-        out.append({"ticker": sym, "price": f"${p:,.2f}" if p else "N/A", "pct_num": chg, "pct": f"{chg:+.2f}%", "positive": chg >= 0, "url": f"https://finance.yahoo.com/quote/{sym}/"})
+        out.append({
+            "ticker": sym,
+            "price": f"${p:,.2f}" if p else "N/A",
+            "pct_num": chg,
+            "pct": f"{chg:+.2f}%",
+            "positive": chg >= 0,
+            "url": f"https://finance.yahoo.com/quote/{sym}"
+        })
     out.sort(key=lambda x: x["pct_num"], reverse=True)
     return out
 
