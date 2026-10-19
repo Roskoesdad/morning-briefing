@@ -29,7 +29,17 @@ T_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&aut
 DEFAULT_JS = """async function updateWeather(){
   const c=document.getElementById('weather-forecast-list');if(!c)return;
   try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=32.7448&longitude=-116.9989&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FLos_Angeles&forecast_days=14');
+    const now = new Date();
+    const cutoff = new Date('2026-10-25T23:59:59-07:00');
+    const isSantee = now <= cutoff;
+    const lat = isSantee ? '32.8384' : '32.7448';
+    const lon = isSantee ? '-116.9739' : '-116.9989';
+    const titleEl = document.getElementById('weather-card-title');
+    if(titleEl){
+      titleEl.innerHTML = isSantee ? '🏕️ Santee 14-Day' : '📍 Spring Valley 14-Day';
+    }
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FLos_Angeles&forecast_days=14';
+    const r=await fetch(u);
     const d=await r.json();let h='';
     const codes={0:'☀️ Clear',1:'🌤️ Mostly Clear',2:'⛅ Pt Cloudy',3:'☁️ Overcast',45:'🌫️ Fog',51:'🌦️ Light Drizzle',61:'🌧️ Light Rain',63:'🌧️ Rain',80:'🌦️ Showers',95:'⛈️ Storm'};
     for(let i=0;i<d.daily.time.length;i++){
@@ -40,7 +50,7 @@ DEFAULT_JS = """async function updateWeather(){
       const prob=d.daily.precipitation_probability_max?d.daily.precipitation_probability_max[i]:0;
       let desc=codes[d.daily.weathercode[i]]||'🌤️ Fair';
       if(prob>=35)desc='🌦️ Rain ('+prob+'%)';
-      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #f1f5f9;font-size:13px;line-height:1.4;"><div><strong style="font-size:14px;">'+day+'</strong> <span style="font-size:11px;color:#94a3b8;margin-left:4px;">'+md+'</span></div><span style="color:#64748b;font-size:12px;">'+desc+'</span><strong style="font-size:14px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:11px;">/ '+min+'°</span></strong></div>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:17px 4px;border-bottom:1px solid #f1f5f9;font-size:14px;line-height:1.4;"><div><strong style="font-size:15px;">'+day+'</strong> <span style="font-size:12px;color:#94a3b8;margin-left:5px;">'+md+'</span></div><span style="color:#64748b;font-size:13px;">'+desc+'</span><strong style="font-size:15px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:12px;">/ '+min+'°</span></strong></div>';
     }
     c.innerHTML=h;
   }catch(e){c.innerHTML='<div style="color:#94a3b8;font-size:13px;">Weather syncing...</div>';}
@@ -228,7 +238,7 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
 4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 16px 24px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.
 5. THREE-COLUMN TOP LEVEL LAYOUT:
-   - LEFT (280px width, align-self: flex-start): 'Spring Valley 14-Day' card. Sized proportionally to fill page 1 down to the executive news level. Contains <div id='weather-forecast-list'>Loading forecast...</div>
+   - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
    - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Ars Technica, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
    - RIGHT (350px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
 6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
