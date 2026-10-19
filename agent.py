@@ -1,4 +1,4 @@
-import os, re, time, urllib.request, json, feedparser, yfinance as yf
+import os, re, time, urllib.request, json, base64, feedparser, yfinance as yf
 from datetime import datetime, timezone, timedelta
 from bs4 import BeautifulSoup
 from google import genai
@@ -60,6 +60,53 @@ async function updatePadres(){
   }catch(e){b.innerHTML='Padres live feed standby.';}
 }
 updateWeather();updatePadres();setInterval(updatePadres,30000);"""
+
+PROMPT_B64 = (
+    "R2VuZXJhdGUgYSBjb21wbGV0ZSwgc2luZ2xlLXBhZ2UgSFRNTCBleGVjdXRpdmUgYnJpZWZpbmcg"
+    "ZGFzaGJvYXJkLgpEYXRhIHBheWxvYWQgSlNPTjoKX19EQVRBX0pTT05fXwoKTUFOREFUT1JZIERF"
+    "U0lHTiBBTkQgU1RSVUNUVVJFIFJFUVVJUkVNRU5UUzoKMS4gTk8gVEFCUy4gRGlzcGxheSBhbGwg"
+    "Y29udGVudCBpbiBvcGVuLCBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIHNwbGl0IHBhbmVscy4K"
+    "Mi4gRlVMTC1XSURUSCBMQVlPVVQ6IHdpZHRoIDk4dnc7IG1heC13aWR0aDogMTgyMHB4OyBtYXJn"
+    "aW46IDAgYXV0bzsgcGFnZSBiYWNrZ3JvdW5kICNmMWY1Zjk7IGNhcmRzICNmZmZmZmYgd2l0aCAx"
+    "cHggc29saWQgI2UyZThmMCwgYm9yZGVyLXJhZGl1cyAxMnB4LCBwYWRkaW5nIDE4cHguIFN0YXJ0"
+    "IGF0IHRvcCBlZGdlLgozLiBDU1MgS0VZRlJBTUU6IEBrZXlmcmFtZXMgcHVsc2UtYWxlcnQgeyAw"
+    "JXtib3JkZXItY29sb3I6I2VmNDQ0NDtib3gtc2hhZG93OjAgMCAwIDAgcmdiYSgyMzksNjgsNjgs"
+    "MC42NSk7fSA1MCUre2JvcmRlci1jb2xvcjojYjkxYzFjO2JveC1zaGFkb3c6MCAwIDE4cHggNXB4"
+    "IHJnYmEoMjM5LDY4LDY4LDAuNTUpO30gMTAwJXtib3JkZXItY29sb3I6I2VmNDQ0NDtib3gtc2hh"
+    "ZG93OjAgMCAwIDAgcmdiYSgyMzksNjgsNjgsMC42NSk7fSB9CjQuIENBVEFMWVNUIFJBREFSIEJB"
+    "Tk5FUjogSWYgJ2NhdGFseXN0cycgYXJyYXkgaXMgbm9uLWVtcHR5LCByZW5kZXIgYW4gYWxlcnQg"
+    "Y29udGFpbmVyIHNwYW5uaW5nIGZ1bGwgd2lkdGggYWJvdmUgdGhlIHRocmVlIGNvbHVtbnMgKHBh"
+    "ZGRpbmcgMThweCAyNnB4LCBtYXJnaW4tYm90dG9tIDIycHgsIGJvcmRlciAzcHggc29saWQgI2Vm"
+    "NDQ0NCwgYmFja2dyb3VuZCAjZmZmNWY1LCBhbmltYXRpb24gcHVsc2UtYWxlcnQgMS41cyBpbmZp"
+    "bml0ZSwgZGlzcGxheSBmbGV4LCBhbGlnbi1pdGVtcyBjZW50ZXIsIGp1c3RpZnktY29udGVudCBz"
+    "cGFjZS1iZXR3ZWVuKS4gSWYgZW1wdHksIHJlbmRlciBub3RoaW5nLgo1LiBUSFJFRS1DT0xVTU4g"
+    "VE9QIExFVkVMIExBWU9VVDoKICAgLSBMRUZUICgyNzBweCB3aWR0aCk6ICdTcHJpbmcgVmFsbGV5"
+    "IDE0LURheSBGb3JlY2FzdCcgY2FyZC4gVmVydGljYWxseSBleHBhbmQgY2FyZCBkb3dud2FyZCBh"
+    "bG9uZ3NpZGUgY2VudGVyIGZlZWQuIENvbnRhaW5zIDxkaXYgaWQ9J3dlYXRoZXItZm9yZWNhc3Qt"
+    "bGlzdCcgc3R5bGU9J2Rpc3BsYXk6ZmxleDtmbGV4LWRpcmVjdGlvbjpjb2x1bW47anVzdGlmeS1j"
+    "b250ZW50OnNwYWNlLWJldHdlZW47aGVpZ2h0OjEwMCU7Jz5Mb2FkaW5nIGZvcmVjYXN0Li4uPC9k"
+    "aXY+CiAgIC0gQ0VOVEVSIChmbGV4OiAxKTogVG9wIGNhcmQgJ1Nwb3J0cyBEZXNrOiBTYW4gRGll"
+    "Z28gUGFkcmVzICYgTUxCJyB3aXRoIDIgc2ltdWx0YW5lb3VzIHNpZGUtYnktc2lkZSBjb2x1bW5z"
+    "IChsZWZ0OiBQYWRyZXMgd2l0aCA8ZGl2IGlkPSdwYWRyZXMtbGl2ZS1ib3gnPjwvZGl2PiBhbmQg"
+    "NQogICAgIFBhZHJlcyBsaW5rcyB3aXRoIDQ2eDQ2IFNEIGxvZ287IHJpZ2h0OiA1IE1MQiBsaW5r"
+    "cyB3aXRoIDQ2eDQ2IE1MQiBsb2dvKS4gTWlkZGxlIGNhcmQgJ0V4ZWN1dGl2ZSBOZXdzIChXb3Js"
+    "ZCAmIFNhbiBEaWVnbyknIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMg"
+    "KGxlZnQ6IFRvcCA1IFdvcmxkIEhlYWRsaW5lczsgcmlnaHQ6IFRvcCA1IEZPWCBRUjUgU2FuIERp"
+    "ZWdvIExvY2FsIE5ld3Mgd2l0aCBzdG9yeSBpbWFnZSB0aHVtYm5haWxzKS4gQm90dG9tIGNhcmQg"
+    "J0FJLCBCaWcgVGVjaCAmIEluZHVzdHJ5IEJyZWFrdGhyb3VnaHMnICgyLWNvbHVtbiBjYXJkIGdy"
+    "aWQgb2YgZXhhY3RseSAxMCBpdGVtcyBmcm9tICdhaSc6IDQgZnJvbSBTbmFja3MsIDQgZnJvbSBU"
+    "aGUgRGVjb2RlciwgMiBmcm9tIFRlY2hDcnVuY2gsIGVhY2ggd2l0aCA1MHg1MCB0aHVtYm5haWwg"
+    "YW5kIGNsaWNrYWJsZSB0aXRsZSkuCiAgIC0gUklHSFQgKDMzMHB4IHdpZHRoKTogVG9wIGNhcmQg"
+    "J1BvcnRmb2xpbyBQdWxzZScgd2l0aCBOTyBJTlRFUk5BTCBTQ1JPTExCQVIgKG5vIG1heC1oZWln"
+    "aHQsIG5vIG92ZXJmbG93LXk6IGF1dG8pIGxpc3RpbmcgQUxMIGl0ZW1zIGluICdob2xkaW5ncycg"
+    "c29ydGVkIGRlc2NlbmRpbmcgd2l0aCB0aWNrZXIsIHByaWNlLCBhbmQgJSBiYWRnZS4gRGlyZWN0"
+    "bHkgYmVsb3cgc2l0cyAnV2F0Y2hsaXN0IENhdGFseXN0IFJhZGFyJyBjYXJkIGxpc3RpbmcgYWxs"
+    "IGl0ZW1zIGluICd3YXRjaGxpc3QnLgo2LiBJbnNlcnQgbWFya2VyIFtbV0VBVEhFUl9BTkRfUEFE"
+    "UkVTX0pTXV0gaW1tZWRpYXRlbHkgYmVmb3JlIDwvYm9keT4uCjcuIFJldHVybiBPTkxZIGNsZWFu"
+    "LCB2YWxpZCByYXcgSFRNTCBzdGFydGluZyB3aXRoIDwhRE9DVFlQRSBodG1sPiBhbmQgZW5kaW5n"
+    "IHdpdGggPC9odG1sPi4gRG8gbm90IGluY2x1ZGUgbWFya2Rvd24gY29kZSBibG9jayBiYWNrdGlj"
+    "a3Mu"
+)
 
 def extract_thumb(e, cat="general"):
     for key in ["media_content", "enclosures"]:
@@ -150,60 +197,4 @@ def get_catalysts():
                 pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
                 vr = (tod_v / avg_v) if avg_v > 0 else 1.0
                 grp = "Current Portfolio" if tkr in HOLDINGS else ("Active Watchlist" if tkr in WATCHLIST else "Discovery Opportunity")
-                url = f"https://finance.yahoo.com/quote/{tkr}/"
-                if has_c and pct >= 0:
-                    signals.append({"ticker": tkr, "group": grp, "type": "DoD Award", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Federal contract identified. Volume: {vr:.1f}x.", "url": url})
-                elif vr >= 1.75 and pct >= 2.0:
-                    signals.append({"ticker": tkr, "group": grp, "type": "Volume Breakout", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Volume breakout ({vr:.1f}x) on upward move.", "url": url})
-        except Exception: continue
-    return signals[:2]
-
-def get_quotes(tickers):
-    out = []
-    for sym in tickers:
-        p, chg = None, 0.0
-        try:
-            t = yf.Ticker(sym)
-            fi = getattr(t, "fast_info", None)
-            if fi and fi.last_price and fi.previous_close:
-                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
-        except Exception: pass
-        out.append({"ticker": sym, "price": f"${p:,.2f}" if p else "N/A", "pct_num": chg, "pct": f"{chg:+.2f}%", "positive": chg >= 0, "url": f"https://finance.yahoo.com/quote/{sym}/"})
-    out.sort(key=lambda x: x["pct_num"], reverse=True)
-    return out
-
-def run_agent():
-    tech = (fetch_rss("https://sherwood.news/rss.xml", 6, "ai")[:4] +
-            fetch_rss("https://the-decoder.com/feed/", 6, "ai")[:4] +
-            fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 4, "ai")[:2])
-    padres, mlb = fetch_padres_stories()
-    payload = {
-        "catalysts": get_catalysts(), "padres": padres, "mlb": mlb,
-        "world": fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5),
-        "sd": fetch_fox5(), "ai": tech[:10],
-        "holdings": get_quotes(HOLDINGS), "watchlist": get_quotes(WATCHLIST)
-    }
-    with open("prompt.txt", "r", encoding="utf-8") as f:
-        instruction = f.read().replace("__DATA_JSON__", json.dumps(payload))
-
-    resp = None
-    for m in ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"]:
-        try:
-            resp = client.models.generate_content(model=m, contents=instruction)
-            if resp and resp.text: break
-        except Exception: time.sleep(3)
-
-    if not resp or not resp.text: raise RuntimeError("Generation failed.")
-    html = resp.text.replace("```html", "").replace("```", "").strip()
-    js_tag = f"<script>\n{DEFAULT_JS}\n</script>"
-    html = html.replace("[[WEATHER_AND_PADRES_JS]]", js_tag) if "[[WEATHER_AND_PADRES_JS]]" in html else (html.replace("</body>", f"{js_tag}</body>") if "</body>" in html else html + js_tag)
-    with open("index.html", "w", encoding="utf-8") as f: f.write(html)
-    print("Dashboard build complete.")
-
-if __name__ == "__main__":
-    run_agent()
+                url
