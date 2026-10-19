@@ -91,18 +91,18 @@ PROMPT_B64 = (
     "KGxlZnQ6IFRvcCA1IFdvcmxkIEhlYWRsaW5lczsgcmlnaHQ6IFRvcCA1IEZPWCBRUjUgU2FuIERp"
     "ZWdvIExvY2FsIE5ld3Mgd2l0aCBzdG9yeSBpbWFnZSB0aHVtYm5haWxzKS4gQm90dG9tIGNhcmQg"
     "J0FJLCBCaWcgVGVjaCAmIEluZHVzdHJ5IEJyZWFrdGhyb3VnaHMnICgyLWNvbHVtbiBjYXJkIGdy"
-    "aWQgb2YgZXhhY3RseSAxMCBpdGVtcyBmcm9tICdhaSc6IDQgZnJvbSBTbmFja3MsIDQgZnJvbSBU"
-    "aGUgRGVjb2RlciwgMiBmcm9tIFRlY2hDcnVuY2gsIGVhY2ggd2l0aCA1MHg1MCB0aHVtYm5haWwg"
-    "YW5kIGNsaWNrYWJsZSB0aXRsZSkuCiAgIC0gUklHSFQgKDMzMHB4IHdpZHRoKTogVG9wIGNhcmQg"
-    "J1BvcnRmb2xpbyBQdWxzZScgd2l0aCBOTyBJTlRFUk5BTCBTQ1JPTExCQVIgKG5vIG1heC1oZWln"
-    "aHQsIG5vIG92ZXJmbG93LXk6IGF1dG8pIGxpc3RpbmcgQUxMIGl0ZW1zIGluICdob2xkaW5ncycg"
-    "c29ydGVkIGRlc2NlbmRpbmcgd2l0aCB0aWNrZXIsIHByaWNlLCBhbmQgJSBiYWRnZS4gRGlyZWN0"
-    "bHkgYmVsb3cgc2l0cyAnV2F0Y2hsaXN0IENhdGFseXN0IFJhZGFyJyBjYXJkIGxpc3RpbmcgYWxs"
-    "IGl0ZW1zIGluICd3YXRjaGxpc3QnLgo2LiBJbnNlcnQgbWFya2VyIFtbV0VBVEhFUl9BTkRfUEFE"
-    "UkVTX0pTXV0gaW1tZWRpYXRlbHkgYmVmb3JlIDwvYm9keT4uCjcuIFJldHVybiBPTkxZIGNsZWFu"
-    "LCB2YWxpZCByYXcgSFRNTCBzdGFydGluZyB3aXRoIDwhRE9DVFlQRSBodG1sPiBhbmQgZW5kaW5n"
-    "IHdpdGggPC9odG1sPi4gRG8gbm90IGluY2x1ZGUgbWFya2Rvd24gY29kZSBibG9jayBiYWNrdGlj"
-    "a3Mu"
+    "aWQgb2YgZXhhY3RseSAxMCBpdGVtcyBmcm9tICdhaSc6IDQgZnJvbSBBcnMgVGVjaG5pY2EsIDQg"
+    "ZnJvbSBUaGUgRGVjb2RlciwgMiBmcm9tIFRlY2hDcnVuY2gsIGVhY2ggd2l0aCA1MHg1MCB0aHVt"
+    "Ym5haWwgYW5kIGNsaWNrYWJsZSB0aXRsZSkuCiAgIC0gUklHSFQgKDMzMHB4IHdpZHRoKTogVG9w"
+    "IGNhcmQgJ1BvcnRmb2xpbyBQdWxzZScgd2l0aCBOTyBJTlRFUk5BTCBTQ1JPTExCQVIgKG5vIG1h"
+    "eC1oZWlnaHQsIG5vIG92ZXJmbG93LXk6IGF1dG8pIGxpc3RpbmcgQUxMIGl0ZW1zIGluICdob2xk"
+    "aW5ncycgc29ydGVkIGRlc2NlbmRpbmcgd2l0aCB0aWNrZXIsIHByaWNlLCBhbmQgJSBiYWRnZS4g"
+    "RGlyZWN0bHkgYmVsb3cgc2l0cyAnV2F0Y2hsaXN0IENhdGFseXN0IFJhZGFyJyBjYXJkIGxpc3Rp"
+    "bmcgYWxsIGl0ZW1zIGluICd3YXRjaGxpc3QnLgo2LiBJbnNlcnQgbWFya2VyIFtbV0VBVEhFUl9B"
+    "TkRfUEFEUkVTX0pTXV0gaW1tZWRpYXRlbHkgYmVmb3JlIDwvYm9keT4uCjcuIFJldHVybiBPTkxZ"
+    "IGNsZWFuLCB2YWxpZCByYXcgSFRNTCBzdGFydGluZyB3aXRoIDwhRE9DVFlQRSBodG1sPiBhbmQg"
+    "ZW5kaW5nIHdpdGggPC9odG1sPi4gRG8gbm90IGluY2x1ZGUgbWFya2Rvd24gY29kZSBibG9jayBi"
+    "YWNrdGlja3Mu"
 )
 
 def extract_thumb(e, cat="general"):
@@ -119,7 +119,7 @@ def extract_thumb(e, cat="general"):
 def fetch_rss(url, limit=10, cat="general"):
     out = []
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
         f = feedparser.parse(urllib.request.urlopen(req, timeout=8).read())
         for e in f.entries[:limit]:
             t = e.get("title", "").strip()
@@ -150,60 +150,4 @@ def fetch_padres_stories():
         if len(p_final) >= 5: break
         if it["title"] not in seen: seen.add(it["title"]); p_final.append(it)
     if len(p_final) < 5:
-        for it in fetch_rss("https://gaslampball.com/rss/index.xml", 8, "padres"):
-            if len(p_final) >= 5: break
-            if it["title"] not in seen: seen.add(it["title"]); p_final.append(it)
-    return p_final[:5], mlb[:5]
-
-def fetch_fox5():
-    seen, out = set(), []
-    for u in ["https://fox5sandiego.com/news/feed/", "https://fox5sandiego.com/feed/"]:
-        for it in fetch_rss(u, 8, "general"):
-            if it["title"] not in seen and len(it["title"]) > 10:
-                seen.add(it["title"]); out.append(it)
-                if len(out) >= 5: return out
-    return out[:5]
-
-def get_catalysts():
-    signals, dod = [], ""
-    try:
-        req = urllib.request.Request("https://www.defense.gov/News/Contracts/", headers={"User-Agent": "Mozilla/5.0"})
-        dod = BeautifulSoup(urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore"), "html.parser").get_text().lower()
-    except Exception: pass
-    seen = set()
-    for tkr in (HOLDINGS + WATCHLIST + DISCOVERY):
-        if "-USD" in tkr or tkr in seen: continue
-        seen.add(tkr)
-        has_c = any(a in dod for a in ENTITY_MAP.get(tkr, [tkr.lower()]))
-        try:
-            t = yf.Ticker(tkr)
-            h = t.history(period="1mo")
-            if len(h) >= 15:
-                avg_v, tod_v = float(h["Volume"].iloc[:-1].mean()), float(h["Volume"].iloc[-1])
-                pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
-                vr = (tod_v / avg_v) if avg_v > 0 else 1.0
-                grp = "Current Portfolio" if tkr in HOLDINGS else ("Active Watchlist" if tkr in WATCHLIST else "Discovery Opportunity")
-                url = f"https://finance.yahoo.com/quote/{tkr}/"
-                if has_c and pct >= 0:
-                    signals.append({"ticker": tkr, "group": grp, "type": "DoD Award", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Federal award identified. Volume: {vr:.1f}x.", "url": url})
-                elif vr >= 1.75 and pct >= 2.0:
-                    signals.append({"ticker": tkr, "group": grp, "type": "Volume Breakout", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Volume breakout ({vr:.1f}x) on upward move.", "url": url})
-        except Exception: pass
-    return signals[:2]
-
-def get_quotes(tickers):
-    out = []
-    for sym in tickers:
-        p, chg = None, 0.0
-        try:
-            t = yf.Ticker(sym)
-            fi = getattr(t, "fast_info", None)
-            if fi and fi.last_price and fi.previous_close:
-                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
-        except Exception: pass
-        out
+        for it in fetch_
