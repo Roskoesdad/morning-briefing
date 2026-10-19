@@ -206,35 +206,4 @@ def get_quotes(tickers):
                     p = float(h["Close"].iloc[-1])
                     chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
         except Exception: pass
-        out.append({"ticker": sym, "price": f"${p:,.2f}" if p else "N/A", "pct_num": chg, "pct": f"{chg:+.2f}%", "positive": chg >= 0, "url": f"https://finance.yahoo.com/quote/{sym}/"})
-    out.sort(key=lambda x: x["pct_num"], reverse=True)
-    return out
-
-def run_agent():
-    tech = (fetch_rss("https://sherwood.news/rss.xml", 6, "ai")[:4] +
-            fetch_rss("https://the-decoder.com/feed/", 6, "ai")[:4] +
-            fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 4, "ai")[:2])
-    padres, mlb = fetch_padres_stories()
-    payload = {
-        "catalysts": get_catalysts(), "padres": padres, "mlb": mlb,
-        "world": fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5),
-        "sd": fetch_fox5(), "ai": tech[:10],
-        "holdings": get_quotes(HOLDINGS), "watchlist": get_quotes(WATCHLIST)
-    }
-    template = base64.b64decode(PROMPT_B64.encode("ascii")).decode("utf-8")
-    instruction = template.replace("__DATA_JSON__", json.dumps(payload))
-    resp = None
-    for m in ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"]:
-        try:
-            resp = client.models.generate_content(model=m, contents=instruction)
-            if resp and resp.text: break
-        except Exception: time.sleep(3)
-    if not resp or not resp.text: raise RuntimeError("Generation failed.")
-    html = resp.text.replace("```html", "").replace("```", "").strip()
-    js_tag = f"<script>\n{DEFAULT_JS}\n</script>"
-    html = html.replace("[[WEATHER_AND_PADRES_JS]]", js_tag) if "[[WEATHER_AND_PADRES_JS]]" in html else (html.replace("</body>", f"{js_tag}</body>") if "</body>" in html else html + js_tag)
-    with open("index.html", "w", encoding="utf-8") as f: f.write(html)
-    print("Dashboard build complete.")
-
-if __name__ == "__main__":
-    run_agent()
+        out
