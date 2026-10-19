@@ -1,4 +1,4 @@
-import os, re, time, urllib.request, json, base64, feedparser
+import os, re, time, urllib.request, json, feedparser
 import yfinance as yf
 from bs4 import BeautifulSoup
 from google import genai
@@ -40,10 +40,10 @@ DEFAULT_JS = """async function updateWeather(){
       const prob=d.daily.precipitation_probability_max?d.daily.precipitation_probability_max[i]:0;
       let desc=codes[d.daily.weathercode[i]]||'🌤️ Fair';
       if(prob>=35)desc='🌦️ Rain ('+prob+'%)';
-      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:12px;line-height:1.2;"><div><strong>'+day+'</strong> <span style="font-size:10px;color:#94a3b8;">'+md+'</span></div><span style="color:#64748b;font-size:11px;">'+desc+'</span><strong style="font-size:12px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:10px;">/ '+min+'°</span></strong></div>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #f1f5f9;font-size:13px;line-height:1.4;"><div><strong style="font-size:14px;">'+day+'</strong> <span style="font-size:11px;color:#94a3b8;margin-left:4px;">'+md+'</span></div><span style="color:#64748b;font-size:12px;">'+desc+'</span><strong style="font-size:14px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:11px;">/ '+min+'°</span></strong></div>';
     }
     c.innerHTML=h;
-  }catch(e){c.innerHTML='<div style="color:#94a3b8;font-size:12px;">Weather syncing...</div>';}
+  }catch(e){c.innerHTML='<div style="color:#94a3b8;font-size:13px;">Weather syncing...</div>';}
 }
 async function updatePadres(){
   const b=document.getElementById('padres-live-box');if(!b)return;
@@ -59,55 +59,6 @@ async function updatePadres(){
   }catch(e){b.innerHTML='Padres live feed standby.';}
 }
 updateWeather();updatePadres();setInterval(updatePadres,30000);"""
-
-PROMPT_B64 = (
-    "R2VuZXJhdGUgYSBjb21wbGV0ZSwgc2luZ2xlLXBhZ2UgSFRNTCBleGVjdXRpdmUgYnJpZWZpbmcg"
-    "ZGFzaGJvYXJkLgpEYXRhIHBheWxvYWQgSlNPTjoKX19EQVRBX0pTT05fXwoKTUFOREFUT1JZIERF"
-    "U0lHTiBBTkQgU1RSVUNUVVJFIFJFUVVJUkVNRU5UUzoKMS4gTk8gVEFCUy4gRGlzcGxheSBhbGwg"
-    "Y29udGVudCBpbiBvcGVuLCBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIHNwbGl0IHBhbmVscy4K"
-    "Mi4gRlVMTC1XSURUSCBMQVlPVVQ6IHdpZHRoIDk4dnc7IG1heC13aWR0aDogMTgyMHB4OyBtYXJn"
-    "aW46IDAgYXV0bzsgcGFnZSBiYWNrZ3JvdW5kICNmMWY1Zjk7IGNhcmRzICNmZmZmZmYgd2l0aCAx"
-    "cHggc29saWQgI2UyZThmMCwgYm9yZGVyLXJhZGl1cyAxMnB4LCBwYWRkaW5nIDE2cHguIFN0YXJ0"
-    "IGF0IHRvcCBlZGdlLgozLiBDU1MgS0VZRlJBTUU6IEBrZXlmcmFtZXMgcHVsc2UtYWxlcnQgeyAw"
-    "JXtib3JkZXItY29sb3I6I2VmNDQ0NDtib3gtc2hhZG93OjAgMCAwIDAgcmdiYSgyMzksNjgsNjgs"
-    "MC42NSk7fSA1MCUre2JvcmRlci1jb2xvcjojYjkxYzFjO2JveC1zaGFkb3c6MCAwIDE4cHggNXB4"
-    "IHJnYmEoMjM5LDY4LDY4LDAuNTUpO30gMTAwJXtib3JkZXItY29sb3I6I2VmNDQ0NDtib3gtc2hh"
-    "ZG93OjAgMCAwIDAgcmdiYSgyMzksNjgsNjgsMC42NSk7fSB9CjQuIENBVEFMWVNUIFJBREFSIEJB"
-    "Tk5FUjogSWYgJ2NhdGFseXN0cycgYXJyYXkgaXMgbm9uLWVtcHR5LCByZW5kZXIgYW4gYWxlcnQg"
-    "Y29udGFpbmVyIHNwYW5uaW5nIGZ1bGwgd2lkdGggYWJvdmUgdGhlIHRocmVlIGNvbHVtbnMgKHBh"
-    "ZGRpbmcgMTZweCAyNHB4LCBtYXJnaW4tYm90dG9tIDIwcHgsIGJvcmRlciAzcHggc29saWQgI2Vm"
-    "NDQ0NCwgYmFja2dyb3VuZCAjZmZmNWY1LCBhbmltYXRpb24gcHVsc2UtYWxlcnQgMS41cyBpbmZp"
-    "bml0ZSwgZGlzcGxheSBmbGV4LCBhbGlnbi1pdGVtcyBjZW50ZXIsIGp1c3RpZnktY29udGVudCBz"
-    "cGFjZS1iZXR3ZWVuKS4gSWYgZW1wdHksIHJlbmRlciBub3RoaW5nLgo1LiBUSFJFRS1DT0xVTU4g"
-    "VE9QIExFVkVMIExBWU9VVDoKICAgLSBMRUZUICgyNDBweCB3aWR0aCwgYWxpZ24tc2VsZjogZmxl"
-    "eC1zdGFydCk6ICdTcHJpbmcgVmFsbGV5IDE0LURheScgY2FyZC4gS2VlcCB0aWdodCwgZG8gTk9U"
-    "IHN0cmV0Y2ggdmVydGljYWxseSwgc28gaXQgZml0cyBuZWF0bHkgb24gcGFnZSAxLiBDb250YWlu"
-    "cyA8ZGl2IGlkPSd3ZWF0aGVyLWZvcmVjYXN0LWxpc3QnPkxvYWRpbmcgZm9yZWNhc3QuLi48L2Rp"
-    "dj4KICAgLSBDRU5URVIgKGZsZXg6IDEpOiBUb3AgY2FyZCAnU3BvcnRzIERlc2s6IFNhbiBEaWVn"
-    "byBQYWRyZXMgJiBNTEInIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMg"
-    "KGxlZnQ6IFBhZHJlcyB3aXRoIDxkaXYgaWQ9J3BhZHJlcy1saXZlLWJveCc+PC9kaXY+IGFuZCA1"
-    "IFBhZHJlcyBsaW5rcyB3aXRoIDQ2eDQ2IFNEIGxvZ287IHJpZ2h0OiA1IE1MQiBsaW5rcyB3aXRo"
-    "IDQ2eDQ2IE1MQiBsb2dvKS4gTWlkZGxlIGNhcmQgJ0V4ZWN1dGl2ZSBOZXdzIChXb3JsZCAmIFNh"
-    "biBEaWVnbyknIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMgKGxlZnQ6"
-    "IFRvcCA1IFdvcmxkIEhlYWRsaW5lczsgcmlnaHQ6IFRvcCA1IEZPWCBRUjUgU2FuIERpZWdvIExv"
-    "Y2FsIE5ld3Mgd2l0aCBzdG9yeSBpbWFnZSB0aHVtYm5haWxzKS4gQm90dG9tIGNhcmQgJ0FJLCBC"
-    "aWcgVGVjaCAmIEluZHVzdHJ5IEJyZWFrdGhyb3VnaHMnICgyLWNvbHVtbiBjYXJkIGdyaWQgb2Yg"
-    "ZXhhY3RseSAxMCBpdGVtcyBmcm9tICdhaSc6IDQgZnJvbSBBcnMgVGVjaG5pY2EsIDQgZnJvbSBU"
-    "aGUgRGVjb2RlciwgMiBmcm9tIFRlY2hDcnVuY2gsIGVhY2ggd2l0aCA1MHg1MCB0aHVtYm5haWwg"
-    "YW5kIGNsaWNrYWJsZSB0aXRsZSkuCiAgIC0gUklHSFQgKDM1MHB4IHdpZHRoKTogVG9wIGNhcmQg"
-    "J1BvcnRmb2xpbyBQdWxzZScgd2l0aCBOTyBJTlRFUk5BTCBTQ1JPTExCQVIgKG5vIG1heC1oZWln"
-    "aHQsIG5vIG92ZXJmbG93LXk6IGF1dG8pLiBFYWNoIGhvbGRpbmcgaXRlbSBNVVNUIGJlIGFuIGFj"
-    "dGl2ZSBjbGlja2FibGUgaHlwZXJsaW5rIDxhIGhyZWY9J3VybCcgdGFyZ2V0PSdfYmxhbmsnIHJl"
-    "bD0nbm9vcGVuZXIgbm9yZWZlcnJlcicgc3R5bGU9J2Rpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRl"
-    "bnQ6c3BhY2UtYmV0d2VlbjthbGlnbi1pdGVtczpjZW50ZXI7cGFkZGluZzo4cHggMDtib3JkZXIt"
-    "Ym90dG9tOjFweCBzb2xpZCAjZjFmNWY5O3RleHQtZGVjb3JhdGlvbjpub25lO2NvbG9yOmluaGVy"
-    "aXQ7Jz4uIFNob3cgdGlja2VyLCBwcmljZSwgYW5kICUgYmFkZ2UuIERpcmVjdGx5IGJlbG93IHNp"
-    "dHMgJ1dhdGNobGlzdCBDYXRhbHlzdCBSYWRhcicgY2FyZCB3aXRoIHRoZSBzYW1lIGNsaWNrYWJs"
-    "ZSBzdHlsZS4KNi4gSW5zZXJ0IG1hcmtlciBbW1dFQVRIRVJfQU5EX1BBRFJFU19KU11dIGltbWVk"
-    "aWF0ZWx5IGJlZm9yZSA8L2JvZHk+Lgo3LiBSZXR1cm4gT05MWSBjbGVhbiwgdmFsaWQgcmF3IEhU"
-    "TUwgc3RhcnRpbmcgd2l0aCA8IURPQ1RZUEUgaHRtbD4gYW5kIGVuZGluZyB3aXRoIDwvaHRtbD4u"
-    "IERvIG5vdCBpbmNsdWRlIG1hcmtkb3duIGNvZGUgYmxvY2sgYmFja3RpY2tzLg=="
-)
 
 def extract_thumb(e, cat="general"):
     for k in ["media_content", "enclosures"]:
@@ -266,9 +217,23 @@ def run_agent():
         "sd": fetch_fox5(), "ai": tech,
         "holdings": get_quotes(HOLDINGS), "watchlist": get_quotes(WATCHLIST)
     }
-    template = base64.b64decode(PROMPT_B64.encode("ascii")).decode("utf-8")
-    instruction = template.replace("__DATA_JSON__", json.dumps(payload))
-    
+
+    instruction = f"""Generate a complete, single-page HTML executive briefing dashboard.
+Data payload JSON:
+{json.dumps(payload)}
+
+MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
+1. NO TABS. Display all content in open, simultaneous side-by-side split panels.
+2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
+3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
+4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 16px 24px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.
+5. THREE-COLUMN TOP LEVEL LAYOUT:
+   - LEFT (280px width, align-self: flex-start): 'Spring Valley 14-Day' card. Sized proportionally to fill page 1 down to the executive news level. Contains <div id='weather-forecast-list'>Loading forecast...</div>
+   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Ars Technica, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
+   - RIGHT (350px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
+6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
+7. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
+
     models = get_candidate_models()
     resp = None
     for m in models:
