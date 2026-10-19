@@ -102,7 +102,8 @@ async function updatePadres() {
   const b = document.getElementById('padres-live-box');
   if (!b) return;
   try {
-    const u = 'https://statsapi.mlb.com/api/v1/schedule?' +\n      'sportId=1&teamId=135&hydrate=linescore';
+    const u = 'https://statsapi.mlb.com/api/v1/schedule?' +
+      'sportId=1&teamId=135&hydrate=linescore';
     const r = await fetch(u);
     const d = await r.json();
     if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {
@@ -134,6 +135,13 @@ setInterval(updatePadres, 30000);
 
 def get_fin_url(t):
     return f"https://finance.yahoo.com/quote/{t}/"
+
+def clean_news_url(url):
+    if not url:
+        return "#"
+    # Strip tracking query strings that prompt Beehiiv/Snacks paywalls and signup modals
+    cleaned = re.sub(r'(\?|&)(utm_[^&=]+=[^&=]+|ref=[^&=]+|email=[^&=]+|source=[^&=]+)', '', url)
+    return cleaned.rstrip('?&')
 
 def extract_thumb(e, cat="general"):
     if "media_content" in e and e.media_content:
@@ -172,10 +180,11 @@ def fetch_rss(url, limit=10, cat="general"):
         f = feedparser.parse(fd)
         for e in f.entries[:limit]:
             t = e.get("title", "").strip()
+            raw_link = e.get("link", "#")
             if t:
                 items.append({
                     "title": t,
-                    "link": e.get("link", "#"),
+                    "link": clean_news_url(raw_link),
                     "image": extract_thumb(e, cat),
                     "pub": e.get("published_parsed")
                 })
@@ -203,9 +212,9 @@ def scrape_mlb():
                     link = href if href.startswith("http") else f"https://www.mlb.com{href}"
                     is_p = any(k in title.lower() for k in PADRES_KEYS) or "padres" in href
                     if is_p:
-                        padres.append({"title": title, "link": link, "image": PADRES_LOGO})
+                        padres.append({"title": title, "link": clean_news_url(link), "image": PADRES_LOGO})
                     else:
-                        mlb.append({"title": title, "link": link, "image": MLB_LOGO})
+                        mlb.append({"title": title, "link": clean_news_url(link), "image": MLB_LOGO})
         except Exception:
             pass
     return padres, mlb
@@ -259,7 +268,7 @@ def fetch_fox5_news():
     return items[:5]
 
 def fetch_tech_and_industry_articles():
-    # 4 articles from Snacks (Sherwood Media)
+    # 4 articles from Snacks (Sherwood Media / Robinhood Snacks)
     snacks_items = fetch_rss("https://sherwood.news/rss.xml", 8, "ai")
     if len(snacks_items) < 4:
         snacks_items += fetch_rss("https://sherwood.news/feed/", 6, "ai")
