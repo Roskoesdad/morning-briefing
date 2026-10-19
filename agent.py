@@ -26,7 +26,17 @@ P_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
 M_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
 T_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"
 
-DEFAULT_JS = """async function updateWeather(){
+DEFAULT_JS = """function toggleWeatherDetail(idx){
+  const el = document.getElementById('w-detail-' + idx);
+  if(!el) return;
+  const isHidden = el.style.display === 'none' || el.style.display === '';
+  document.querySelectorAll('[id^="w-detail-"]').forEach(d => d.style.display = 'none');
+  if(isHidden){
+    el.style.display = 'block';
+  }
+}
+
+async function updateWeather(){
   const c=document.getElementById('weather-forecast-list');if(!c)return;
   try{
     const now = new Date();
@@ -38,23 +48,43 @@ DEFAULT_JS = """async function updateWeather(){
     if(titleEl){
       titleEl.innerHTML = isSantee ? '🏕️ Santee 14-Day' : '📍 Spring Valley 14-Day';
     }
-    const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FLos_Angeles&forecast_days=14';
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,windgusts_10m_max&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph&timezone=America%2FLos_Angeles&forecast_days=14';
     const r=await fetch(u);
     const d=await r.json();let h='';
-    const codes={0:'☀️ Clear',1:'🌤️ Mostly Clear',2:'⛅ Pt Cloudy',3:'☁️ Overcast',45:'🌫️ Fog',51:'🌦️ Light Drizzle',61:'🌧️ Light Rain',63:'🌧️ Rain',80:'🌦️ Showers',95:'⛈️ Storm'};
+    const codes={0:'☀️ Clear',1:'🌤️ Mostly Clear',2:'⛅ Pt Cloudy',3:'☁️ Overcast',45:'🌫️ Fog',51:'🌦️ Light Drizzle',61:'🌧️ Light Rain',63:'🌧️ Rain',65:'🌧️ Heavy Rain',80:'🌦️ Showers',95:'⛈️ Storm'};
     for(let i=0;i<d.daily.time.length;i++){
       const dt=new Date(d.daily.time[i]+'T12:00:00');
       const day=i===0?'Today':dt.toLocaleDateString('en-US',{weekday:'short'});
       const md=(dt.getMonth()+1)+'/'+dt.getDate();
       const max=Math.round(d.daily.temperature_2m_max[i]),min=Math.round(d.daily.temperature_2m_min[i]);
-      const prob=d.daily.precipitation_probability_max?d.daily.precipitation_probability_max[i]:0;
+      const prob=d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : 0;
+      const inch=(d.daily.precipitation_sum && d.daily.precipitation_sum[i] !== undefined) ? d.daily.precipitation_sum[i] : 0.0;
+      const gust=(d.daily.windgusts_10m_max && d.daily.windgusts_10m_max[i] !== undefined) ? Math.round(d.daily.windgusts_10m_max[i]) : 0;
       let desc=codes[d.daily.weathercode[i]]||'🌤️ Fair';
-      if(prob>=35)desc='🌦️ Rain ('+prob+'%)';
-      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:17px 4px;border-bottom:1px solid #f1f5f9;font-size:14px;line-height:1.4;"><div><strong style="font-size:15px;">'+day+'</strong> <span style="font-size:12px;color:#94a3b8;margin-left:5px;">'+md+'</span></div><span style="color:#64748b;font-size:13px;">'+desc+'</span><strong style="font-size:15px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:12px;">/ '+min+'°</span></strong></div>';
+      if(prob>=35 || inch > 0.01) desc='🌦️ Rain ('+prob+'%)';
+      
+      h+='<div style="border-bottom:1px solid #f1f5f9;">';
+      h+='<div onclick="toggleWeatherDetail('+i+')" style="display:flex;justify-content:space-between;align-items:center;padding:17px 4px;font-size:14px;line-height:1.4;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\\'#f8fafc\\'" onmouseout="this.style.background=\\'transparent\\'">';
+      h+='<div><strong style="font-size:15px;">'+day+'</strong> <span style="font-size:12px;color:#94a3b8;margin-left:5px;">'+md+'</span></div>';
+      h+='<span style="color:#64748b;font-size:13px;">'+desc+'</span>';
+      h+='<strong style="font-size:15px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:12px;">/ '+min+'°</span></strong>';
+      h+='</div>';
+      
+      h+='<div id="w-detail-'+i+'" style="display:none;background:#f8fafc;padding:10px 14px;border-radius:8px;margin-bottom:8px;font-size:12px;color:#334155;border-left:3px solid #3b82f6;">';
+      h+='<div style="font-weight:700;margin-bottom:4px;color:#1e293b;">📅 Details for '+day+' ('+md+')</div>';
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">';
+      h+='<div>🌧️ <strong>Total Rain:</strong> '+(inch > 0 ? inch + ' in' : '0.00 in')+'</div>';
+      h+='<div>🎯 <strong>Rain Chance:</strong> '+prob+'%</div>';
+      h+='<div>💨 <strong>Max Gusts:</strong> '+gust+' mph</div>';
+      h+='<div>🌡️ <strong>Spread:</strong> '+min+'°F to '+max+'°F</div>';
+      h+='</div></div>';
+      
+      h+='</div>';
     }
     c.innerHTML=h;
   }catch(e){c.innerHTML='<div style="color:#94a3b8;font-size:13px;">Weather syncing...</div>';}
 }
+
 async function updatePadres(){
   const b=document.getElementById('padres-live-box');if(!b)return;
   try{
