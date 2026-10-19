@@ -1,5 +1,5 @@
-import os, re, time, urllib.request, json, base64, feedparser, yfinance as yf
-from datetime import datetime, timezone, timedelta
+import os, re, time, urllib.request, json, base64, feedparser
+import yfinance as yf
 from bs4 import BeautifulSoup
 from google import genai
 
@@ -12,6 +12,7 @@ HOLDINGS = [
 ]
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "WDC", "CSCO", "VRT", "AVGO"]
 DISCOVERY = ["RTX", "NOC", "GD", "BA"]
+
 ENTITY_MAP = {
     "PLTR": ["palantir"], "MSFT": ["microsoft"], "NVDA": ["nvidia"],
     "AMZN": ["amazon", "aws"], "EQIX": ["equinix"], "LMT": ["lockheed"],
@@ -19,6 +20,7 @@ ENTITY_MAP = {
     "MU": ["micron"], "CSCO": ["cisco"], "RTX": ["raytheon", "rtx"],
     "NOC": ["northrop"], "GD": ["general dynamics"], "TMO": ["thermo fisher"]
 }
+
 P_KEYS = ["padres", "san diego", "friars", "petco", "tatis", "machado", "merrill", "cease"]
 P_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
 M_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
@@ -110,8 +112,10 @@ def extract_thumb(e, cat="general"):
         if k in e and e[k]:
             for it in e[k]:
                 u = it.get("url") or it.get("href") or ""
-                if any(x in u.lower() for x in [".jpg", ".jpeg", ".png", ".webp"]): return u
-    if "media_thumbnail" in e and e.media_thumbnail: return e.media_thumbnail[0].get("url", "")
+                if any(x in u.lower() for x in [".jpg", ".jpeg", ".png", ".webp"]):
+                    return u
+    if "media_thumbnail" in e and e.media_thumbnail:
+        return e.media_thumbnail[0].get("url", "")
     desc = e.get("content", [{}])[0].get("value", "") or e.get("description", "")
     m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', desc)
     return m.group(1) if m else (P_LOGO if cat == "padres" else (M_LOGO if cat == "mlb" else T_LOGO))
@@ -119,12 +123,14 @@ def extract_thumb(e, cat="general"):
 def fetch_rss(url, limit=10, cat="general"):
     out = []
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         f = feedparser.parse(urllib.request.urlopen(req, timeout=8).read())
         for e in f.entries[:limit]:
             t = e.get("title", "").strip()
-            if t: out.append({"title": t, "link": e.get("link", "#"), "image": extract_thumb(e, cat)})
-    except Exception: pass
+            if t:
+                out.append({"title": t, "link": e.get("link", "#"), "image": extract_thumb(e, cat)})
+    except Exception:
+        pass
     return out
 
 def scrape_mlb():
@@ -140,14 +146,144 @@ def scrape_mlb():
                     link = href if href.startswith("http") else f"https://www.mlb.com{href}"
                     is_p = any(k in title.lower() for k in P_KEYS) or "padres" in href
                     (padres if is_p else mlb).append({"title": title, "link": link, "image": P_LOGO if is_p else M_LOGO})
-        except Exception: pass
+        except Exception:
+            pass
     return padres, mlb
 
 def fetch_padres_stories():
     p_scraped, mlb = scrape_mlb()
     p_final, seen = [p for p in p_scraped[:2]], {p["title"] for p in p_scraped[:2]}
-    for it in fetch_rss("https://www.mlbtraderumors.com/san-diego-padres/feed", 8, "padres"):
-        if len(p_final) >= 5: break
-        if it["title"] not in seen: seen.add(it["title"]); p_final.append(it)
+    feed_url = "https://www.mlbtraderumors.com/san-diego-padres/feed"
+    for it in fetch_rss(feed_url, 8, "padres"):
+        if len(p_final) >= 5:
+            break
+        if it["title"] not in seen:
+            seen.add(it["title"])
+            p_final.append(it)
     if len(p_final) < 5:
-        for it in fetch_
+        for it in fetch_rss("https://gaslampball.com/rss/index.xml", 8, "padres"):
+            if len(p_final) >= 5:
+                break
+            if it["title"] not in seen:
+                seen.add(it["title"])
+                p_final.append(it)
+    return p_final[:5], mlb[:5]
+
+def fetch_fox5():
+    seen, out = set(), []
+    for u in ["https://fox5sandiego.com/news/feed/", "https://fox5sandiego.com/feed/"]:
+        for it in fetch_rss(u, 8, "general"):
+            if it["title"] not in seen and len(it["title"]) > 10:
+                seen.add(it["title"])
+                out.append(it)
+                if len(out) >= 5:
+                    return out
+    return out[:5]
+
+def get_catalysts():
+    signals, dod = [], ""
+    try:
+        req = urllib.request.Request("https://www.defense.gov/News/Contracts/", headers={"User-Agent": "Mozilla/5.0"})
+        dod = BeautifulSoup(urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore"), "html.parser").get_text().lower()
+    except Exception:
+        pass
+    seen = set()
+    for tkr in (HOLDINGS + WATCHLIST + DISCOVERY):
+        if "-USD" in tkr or tkr in seen:
+            continue
+        seen.add(tkr)
+        has_c = any(a in dod for a in ENTITY_MAP.get(tkr, [tkr.lower()]))
+        try:
+            t = yf.Ticker(tkr)
+            h = t.history(period="1mo")
+            if len(h) >= 15:
+                avg_v, tod_v = float(h["Volume"].iloc[:-1].mean()), float(h["Volume"].iloc[-1])
+                pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
+                vr = (tod_v / avg_v) if avg_v > 0 else 1.0
+                grp = "Current Portfolio" if tkr in HOLDINGS else ("Active Watchlist" if tkr in WATCHLIST else "Discovery Opportunity")
+                url = f"https://finance.yahoo.com/quote/{tkr}/"
+                if has_c and pct >= 0:
+                    signals.append({"ticker": tkr, "group": grp, "type": "DoD Award", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Federal award identified. Volume: {vr:.1f}x.", "url": url})
+                elif vr >= 1.75 and pct >= 2.0:
+                    signals.append({"ticker": tkr, "group": grp, "type": "Volume Breakout", "vol_ratio": f"{vr:.1f}x", "pct": f"{pct:+.2f}%", "summary": f"Volume breakout ({vr:.1f}x) on upward move.", "url": url})
+        except Exception:
+            pass
+    return signals[:2]
+
+def get_quotes(tickers):
+    out = []
+    for sym in tickers:
+        p, chg = None, 0.0
+        try:
+            t = yf.Ticker(sym)
+            fi = getattr(t, "fast_info", None)
+            if fi and fi.last_price and fi.previous_close:
+                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
+            else:
+                h = t.history(period="2d")
+                if len(h) >= 2:
+                    p = float(h["Close"].iloc[-1])
+                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
+        except Exception:
+            pass
+        out.append({"ticker": sym, "price": f"${p:,.2f}" if p else "N/A", "pct_num": chg, "pct": f"{chg:+.2f}%", "positive": chg >= 0, "url": f"https://finance.yahoo.com/quote/{sym}/"})
+    out.sort(key=lambda x: x["pct_num"], reverse=True)
+    return out
+
+def get_candidate_models():
+    candidates = []
+    try:
+        for m in client.models.list():
+            nm = m.name.replace("models/", "")
+            if "flash" in nm.lower() and not nm.endswith("-exp") and "tts" not in nm.lower():
+                candidates.append(nm)
+    except Exception as e:
+        print("Model discovery note:", e)
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+        if fallback not in candidates:
+            candidates.append(fallback)
+    return candidates
+
+def run_agent():
+    ars = fetch_rss("https://feeds.arstechnica.com/arstechnica/technology-lab", 6, "ai")[:4]
+    decoder = fetch_rss("https://the-decoder.com/feed/", 6, "ai")[:4]
+    tc = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 4, "ai")[:2]
+    tech = (ars + decoder + tc)[:10]
+
+    padres, mlb = fetch_padres_stories()
+    payload = {
+        "catalysts": get_catalysts(), "padres": padres, "mlb": mlb,
+        "world": fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5),
+        "sd": fetch_fox5(), "ai": tech,
+        "holdings": get_quotes(HOLDINGS), "watchlist": get_quotes(WATCHLIST)
+    }
+    template = base64.b64decode(PROMPT_B64.encode("ascii")).decode("utf-8")
+    instruction = template.replace("__DATA_JSON__", json.dumps(payload))
+    
+    models = get_candidate_models()
+    resp = None
+    for m in models:
+        for attempt in range(2):
+            try:
+                print(f"Generating with {m}...")
+                resp = client.models.generate_content(model=m, contents=instruction)
+                if resp and resp.text:
+                    break
+            except Exception as e:
+                print(f"Notice on {m}: {e}")
+                time.sleep(3)
+        if resp and resp.text:
+            break
+
+    if not resp or not resp.text:
+        raise RuntimeError("Generation failed across all models.")
+
+    html = resp.text.replace("```html", "").replace("```", "").strip()
+    js_tag = f"<script>\n{DEFAULT_JS}\n</script>"
+    html = html.replace("[[WEATHER_AND_PADRES_JS]]", js_tag) if "[[WEATHER_AND_PADRES_JS]]" in html else (html.replace("</body>", f"{js_tag}</body>") if "</body>" in html else html + js_tag)
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html)
+    print("Dashboard build complete.")
+
+if __name__ == "__main__":
+    run_agent()
