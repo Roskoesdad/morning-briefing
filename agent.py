@@ -40,10 +40,10 @@ DEFAULT_JS = """async function updateWeather(){
       const prob=d.daily.precipitation_probability_max?d.daily.precipitation_probability_max[i]:0;
       let desc=codes[d.daily.weathercode[i]]||'🌤️ Fair';
       if(prob>=35)desc='🌦️ Rain ('+prob+'%)';
-      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:12px;line-height:1.2;"><div><strong>'+day+'</strong> <span style="font-size:10px;color:#94a3b8;">'+md+'</span></div><span style="color:#64748b;font-size:11px;">'+desc+'</span><strong style="font-size:12px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:10px;">/ '+min+'°</span></strong></div>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #f1f5f9;font-size:13px;line-height:1.4;"><div><strong style="font-size:14px;">'+day+'</strong> <span style="font-size:11px;color:#94a3b8;margin-left:4px;">'+md+'</span></div><span style="color:#64748b;font-size:12px;">'+desc+'</span><strong style="font-size:14px;">'+max+'° <span style="font-weight:400;color:#94a3b8;font-size:11px;">/ '+min+'°</span></strong></div>';
     }
     c.innerHTML=h;
-  }catch(e){c.innerHTML='<div style="color:#94a3b8;font-size:12px;">Weather syncing...</div>';}
+  }catch(e){c.innerHTML='<div style="color:#94a3b8;font-size:13px;">Weather syncing...</div>';}
 }
 async function updatePadres(){
   const b=document.getElementById('padres-live-box');if(!b)return;
@@ -67,7 +67,7 @@ PROMPT_B64 = (
     "Y29udGVudCBpbiBvcGVuLCBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIHNwbGl0IHBhbmVscy4K"
     "Mi4gRlVMTC1XSURUSCBMQVlPVVQ6IHdpZHRoIDk4dnc7IG1heC13aWR0aDogMTgyMHB4OyBtYXJn"
     "aW46IDAgYXV0bzsgcGFnZSBiYWNrZ3JvdW5kICNmMWY1Zjk7IGNhcmRzICNmZmZmZmYgd2l0aCAx"
-    "cHggc29saWQgI2UyZThmMCwgYm9yZGVyLXJhZGl1cyAxMnB4LCBwYWRkaW5nIDE2cHguIFN0YXJ0"
+    "cHggc29saWQgI2UyZThmMCwgYm9yZGVyLXJhZGl1cyAxMnB4LCBwYWRkaW5nIDE4cHguIFN0YXJ0"
     "IGF0IHRvcCBlZGdlLgozLiBDU1MgS0VZRlJBTUU6IEBrZXlmcmFtZXMgcHVsc2UtYWxlcnQgeyAw"
     "JXtib3JkZXItY29sb3I6I2VmNDQ0NDtib3gtc2hhZG93OjAgMCAwIDAgcmdiYSgyMzksNjgsNjgs"
     "MC42NSk7fSA1MCUre2JvcmRlci1jb2xvcjojYjkxYzFjO2JveC1zaGFkb3c6MCAwIDE4cHggNXB4"
@@ -79,34 +79,34 @@ PROMPT_B64 = (
     "NDQ0NCwgYmFja2dyb3VuZCAjZmZmNWY1LCBhbmltYXRpb24gcHVsc2UtYWxlcnQgMS41cyBpbmZp"
     "bml0ZSwgZGlzcGxheSBmbGV4LCBhbGlnbi1pdGVtcyBjZW50ZXIsIGp1c3RpZnktY29udGVudCBz"
     "cGFjZS1iZXR3ZWVuKS4gSWYgZW1wdHksIHJlbmRlciBub3RoaW5nLgo1LiBUSFJFRS1DT0xVTU4g"
-    "VE9QIExFVkVMIExBWU9VVDoKICAgLSBMRUZUICgyNDBweCB3aWR0aCwgYWxpZ24tc2VsZjogZmxl"
-    "eC1zdGFydCk6ICdTcHJpbmcgVmFsbGV5IDE0LURheScgY2FyZC4gS2VlcCB0aWdodCwgZG8gTk9U"
-    "IHN0cmV0Y2ggdmVydGljYWxseSwgc28gaXQgZml0cyBuZWF0bHkgb24gcGFnZSAxLiBDb250YWlu"
-    "cyA8ZGl2IGlkPSd3ZWF0aGVyLWZvcmVjYXN0LWxpc3QnPkxvYWRpbmcgZm9yZWNhc3QuLi48L2Rp"
-    "dj4KICAgLSBDRU5URVIgKGZsZXg6IDEpOiBUb3AgY2FyZCAnU3BvcnRzIERlc2s6IFNhbiBEaWVn"
-    "byBQYWRyZXMgJiBNTEInIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMg"
-    "KGxlZnQ6IFBhZHJlcyB3aXRoIDxkaXYgaWQ9J3BhZHJlcy1saXZlLWJveCc+PC9kaXY+IGFuZCA1"
-    "IFBhZHJlcyBsaW5rcyB3aXRoIDQ2eDQ2IFNEIGxvZ287IHJpZ2h0OiA1IE1MQiBsaW5rcyB3aXRo"
-    "IDQ2eDQ2IE1MQiBsb2dvKS4gTWlkZGxlIGNhcmQgJ0V4ZWN1dGl2ZSBOZXdzIChXb3JsZCAmIFNh"
-    "biBEaWVnbyknIHdpdGggMiBzaW11bHRhbmVvdXMgc2lkZS1ieS1zaWRlIGNvbHVtbnMgKGxlZnQ6"
-    "IFRvcCA1IFdvcmxkIEhlYWRsaW5lczsgcmlnaHQ6IFRvcCA1IEZPWCBRUjUgU2FuIERpZWdvIExv"
-    "Y2FsIE5ld3Mgd2l0aCBzdG9yeSBpbWFnZSB0aHVtYm5haWxzKS4gQm90dG9tIGNhcmQgJ0FJLCBC"
-    "aWcgVGVjaCAmIEluZHVzdHJ5IEJyZWFrdGhyb3VnaHMnICgyLWNvbHVtbiBjYXJkIGdyaWQgb2Yg"
-    "ZXhhY3RseSAxMCBpdGVtcyBmcm9tICdhaSc6IDQgZnJvbSBBcnMgVGVjaG5pY2EsIDQgZnJvbSBU"
-    "aGUgRGVjb2RlciwgMiBmcm9tIFRlY2hDcnVuY2gsIGVhY2ggd2l0aCA1MHg1MCB0aHVtYm5haWwg"
-    "YW5kIGNsaWNrYWJsZSB0aXRsZSkuCiAgIC0gUklHSFQgKDM1MHB4IHdpZHRoKTogVG9wIGNhcmQg"
-    "J1BvcnRmb2xpbyBQdWxzZScgd2l0aCBOTyBJTlRFUk5BTCBTQ1JPTExCQVIgKG5vIG1heC1oZWln"
-    "aHQsIG5vIG92ZXJmbG93LXk6IGF1dG8pLiBFYWNoIGhvbGRpbmcgaXRlbSBNVVNUIGJlIGFuIGFj"
-    "dGl2ZSBjbGlja2FibGUgaHlwZXJsaW5rIDxhIGhyZWY9J3VybCcgdGFyZ2V0PSdfYmxhbmsnIHJl"
-    "bD0nbm9vcGVuZXIgbm9yZWZlcnJlcicgc3R5bGU9J2Rpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRl"
-    "bnQ6c3BhY2UtYmV0d2VlbjthbGlnbi1pdGVtczpjZW50ZXI7cGFkZGluZzo4cHggMDtib3JkZXIt"
-    "Ym90dG9tOjFweCBzb2xpZCAjZjFmNWY5O3RleHQtZGVjb3JhdGlvbjpub25lO2NvbG9yOmluaGVy"
-    "aXQ7Jz4uIFNob3cgdGlja2VyLCBwcmljZSwgYW5kICUgYmFkZ2UuIERpcmVjdGx5IGJlbG93IHNp"
-    "dHMgJ1dhdGNobGlzdCBDYXRhbHlzdCBSYWRhcicgY2FyZCB3aXRoIHRoZSBzYW1lIGNsaWNrYWJs"
-    "ZSBzdHlsZS4KNi4gSW5zZXJ0IG1hcmtlciBbW1dFQVRIRVJfQU5EX1BBRFJFU19KU11dIGltbWVk"
-    "aWF0ZWx5IGJlZm9yZSA8L2JvZHk+Lgo3LiBSZXR1cm4gT05MWSBjbGVhbiwgdmFsaWQgcmF3IEhU"
-    "TUwgc3RhcnRpbmcgd2l0aCA8IURPQ1RZUEUgaHRtbD4gYW5kIGVuZGluZyB3aXRoIDwvaHRtbD4u"
-    "IERvIG5vdCBpbmNsdWRlIG1hcmtkb3duIGNvZGUgYmxvY2sgYmFja3RpY2tzLg=="
+    "VE9QIExFVkVMIExBWU9VVDoKICAgLSBMRUZUICgyODBweCB3aWR0aCwgYWxpZ24tc2VsZjogZmxl"
+    "eC1zdGFydCk6ICdTcHJpbmcgVmFsbGV5IDE0LURheScgY2FyZC4gU2l6ZWQgcHJvcG9ydGlvbmFs"
+    "bHkgdG8gZmlsbCBwYWdlIDEgZG93biB0byB0aGUgZXhlY3V0aXZlIG5ld3MgbGV2ZWwuIENvbnRh"
+    "aW5zIDxkaXYgaWQ9J3dlYXRoZXItZm9yZWNhc3QtbGlzdCc+TG9hZGluZyBmb3JlY2FzdC4uLjwv"
+    "ZGl2PgogICAtIENFTlRFUiAoZmxleDogMSk6IFRvcCBjYXJkICdTcG9ydHMgRGVzazogU2FuIERp"
+    "ZWdvIFBhZHJlcyAmIE1MQicgd2l0aCAyIHNpbXVsdGFuZW91cyBzaWRlLWJ5LXNpZGUgY29sdW1u"
+    "cyAobGVmdDogUGFkcmVzIHdpdGggPGRpdiBpZD0ncGFkcmVzLWxpdmUtYm94Jz48L2Rpdj4gYW5k"
+    "IDUgUGFkcmVzIGxpbmtzIHdpdGggNDZ4NDYgU0QgbG9nbzsgcmlnaHQ6IDUgTUxGIGxpbmtzIHdp"
+    "dGggNDZ4NDYgTUxGIGxvZ28pLiBNaWRkbGUgY2FyZCAnRXhlY3V0aXZlIE5ld3MgKFdvcmxkICYg"
+    "U2FuIERpZWdvKScgd2l0aCAyIHNpbXVsdGFuZW91cyBzaWRlLWJ5LXNpZGUgY29sdW1ucyAobGVm"
+    "dDogVG9wIDUgV29ybGQgSGVhZGxpbmVzOyByaWdodDogVG9wIDUgRk9YIFFSNSBTYW4gRGllZ28g"
+    "TG9jYWwgTmV3cyB3aXRoIHN0b3J5IGltYWdlIHRodW1ibmFpbHMpLiBCb3R0b20gY2FyZCAnQUks"
+    "IEJpZyBUZWNoICYgSW5kdXN0cnkgQnJlYWt0aHJvdWdocycgKDItY29sdW1uIGNhcmQgZ3JpZCBv"
+    "ZiBleGFjdGx5IDEwIGl0ZW1zIGZyb20gJ2FpJzogNCBmcm9tIEFycyBUZWNobmljYSwgNCBmcm9t"
+    "IFRoZSBEZWNvZGVyLCAyIGZyb20gVGVjaENydW5jaCwgZWFjaCB3aXRoIDUweDUwIHRodW1ibmFp"
+    "bCBhbmQgY2xpY2thYmxlIHRpdGxlKS4KICAgLSBSSUdHVCAoMzUwcHggd2lkdGgpOiBUb3AgY2Fy"
+    "ZCAnUG9ydGZvbGlvIFB1bHNlJyB3aXRoIE5PIElOVEVSTkFMIFNDUk9MTEJBUiAobm8gbWF4LWhl"
+    "aWdodCwgbm8gb3ZlcmZsb3cteTogYXV0bykuIEVhY2ggaG9sZGluZyBpdGVtIE1VU1QgYmUgYW4g"
+    "YWN0aXZlIGNsaWNrYWJsZSBoeXBlcmxpbmsgPGEgaHJlZj0ndXJsJyB0YXJnZXQ9J19ibGFmsycg"
+    "cmVsPSdub29wZW5lciBub3JlZmVycmVyJyBzdHlsZT0nZGlzcGxheTpmbGV4O2p1c3RpZnktY29u"
+    "dGVudDtzcGFjZS1iZXR3ZWVuO2FsaWduLWl0ZW1zOmNlbnRlcjtwYWRkaW5nOjhweCAwO2JvcmRl"
+    "ci1ib3R0b206MXB4IHNvbGlkICNmMWY1Zjk7dGV4dC1kZWNvcmF0aW9uOm5vbmU7Y29sb3I6aW5o"
+    "ZXJpdDsnPi4gU2hvdyB0aWNrZXIsIHByaWNlLCBhbmQgJSBiYWRnZS4gRGlyZWN0bHkgYmVsb3cg"
+    "c2l0cyAnV2F0Y2hsaXN0IENhdGFseXN0IFJhZGFyJyBjYXJkIHdpdGggdGhlIHNhbWUgY2xpY2th"
+    "YmxlIHN0eWxlLgo2LiBJbnNlcnQgbWFya2VyIFtbV0VBVEhFUl9BTkRfUEFEUkVTX0pTXV0gaW1t"
+    "ZWRpYXRlbHkgYmVmb3JlIDwvYm9keT4uCjcuIFJldHVybiBPTkxZIGNsZWFuLCB2YWxpZCByYXcg"
+    "SFRNTCBzdGFydGluZyB3aXRoIDwhRE9DVFlQRSBodG1sPiBhbmQgZW5kaW5nIHdpdGggPC9odG1s"
+    "Pi4gRG8gbm90IGluY2x1ZGUgbWFya2Rvd24gY29kZSBibG9jayBiYWNrdGlja3Mu"
 )
 
 def extract_thumb(e, cat="general"):
