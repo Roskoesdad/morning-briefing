@@ -52,7 +52,8 @@ async function updatePadres() {
   const b = document.getElementById('padres-live-box');
   if (!b) return;
   try {
-    const u = 'https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore';
+    const u = 'https://statsapi.mlb.com/api/v1/schedule?' +
+      'sportId=1&teamId=135&hydrate=linescore';
     const r = await fetch(u);
     const d = await r.json();
     if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {

@@ -102,7 +102,7 @@ async function updatePadres() {
   const b = document.getElementById('padres-live-box');
   if (!b) return;
   try {
-    const u = 'https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=135&hydrate=linescore';
+    const u = 'https://statsapi.mlb.com/api/v1/schedule?' +\n      'sportId=1&teamId=135&hydrate=linescore';
     const r = await fetch(u);
     const d = await r.json();
     if (!d.dates || !d.dates[0] || !d.dates[0].games[0]) {
@@ -258,6 +258,50 @@ def fetch_fox5_news():
             break
     return items[:5]
 
+def fetch_tech_and_industry_articles():
+    # 4 articles from Snacks (Sherwood Media)
+    snacks_items = fetch_rss("https://sherwood.news/rss.xml", 8, "ai")
+    if len(snacks_items) < 4:
+        snacks_items += fetch_rss("https://sherwood.news/feed/", 6, "ai")
+
+    # 4 articles from The Rundown AI
+    rundown_items = fetch_rss("https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml", 8, "ai")
+    if len(rundown_items) < 4:
+        rundown_items += fetch_rss("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", 6, "ai")
+
+    # 2 articles from TechCrunch AI
+    tc_items = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 6, "ai")
+
+    seen = set()
+    final_list = []
+
+    for item in snacks_items:
+        if item["title"] not in seen and len(item["title"]) > 10:
+            seen.add(item["title"])
+            final_list.append(item)
+            if len(final_list) == 4:
+                break
+
+    rundown_count = 0
+    for item in rundown_items:
+        if item["title"] not in seen and len(item["title"]) > 10:
+            seen.add(item["title"])
+            final_list.append(item)
+            rundown_count += 1
+            if rundown_count == 4:
+                break
+
+    tc_count = 0
+    for item in tc_items:
+        if item["title"] not in seen and len(item["title"]) > 10:
+            seen.add(item["title"])
+            final_list.append(item)
+            tc_count += 1
+            if tc_count == 2:
+                break
+
+    return final_list[:10]
+
 def get_catalyst_alerts():
     signals = []
     dod_text = ""
@@ -398,7 +442,9 @@ def run_agent():
     sd = fetch_fox5_news()
     
     padres, mlb = fetch_padres_stories()
-    ai = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 10, "ai")
+    
+    print("Fetching tech & industry news (4 Snacks, 4 Rundown AI, 2 TechCrunch)...")
+    ai_tech_items = fetch_tech_and_industry_articles()
 
     print("Scanning high-conviction catalysts & federal procurement...")
     catalysts = get_catalyst_alerts()
@@ -413,7 +459,7 @@ def run_agent():
         "mlb": mlb,
         "world": world,
         "sd": sd,
-        "ai": ai,
+        "ai": ai_tech_items,
         "holdings": holdings,
         "watchlist": watchlist
     }
@@ -429,7 +475,7 @@ def run_agent():
         "4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning the full width above the three columns (padding 18px 26px, margin-bottom 22px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.\n"
         "5. THREE-COLUMN TOP LEVEL LAYOUT:\n"
         "   - LEFT (270px width): 'Spring Valley 14-Day Forecast' card. Vertically expand card downward alongside center feed. Contains <div id='weather-forecast-list' style='display:flex;flex-direction:column;justify-content:space-between;height:100%;'>Loading forecast...</div>\n"
-        "   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Enterprise M&A' (2-column card grid of 10 tech items with 50x50 thumbnails).\n"
+        "   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Snacks, 4 from The Rundown AI, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).\n"
         "   - RIGHT (330px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto) listing ALL items in 'holdings' sorted descending with ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card listing all items in 'watchlist'.\n"
         "6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.\n"
         "7. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."
