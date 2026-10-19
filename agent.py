@@ -136,13 +136,6 @@ setInterval(updatePadres, 30000);
 def get_fin_url(t):
     return f"https://finance.yahoo.com/quote/{t}/"
 
-def clean_news_url(url):
-    if not url:
-        return "#"
-    # Strip tracking query strings that prompt Beehiiv/Snacks paywalls and signup modals
-    cleaned = re.sub(r'(\?|&)(utm_[^&=]+=[^&=]+|ref=[^&=]+|email=[^&=]+|source=[^&=]+)', '', url)
-    return cleaned.rstrip('?&')
-
 def extract_thumb(e, cat="general"):
     if "media_content" in e and e.media_content:
         for m in e.media_content:
@@ -180,11 +173,11 @@ def fetch_rss(url, limit=10, cat="general"):
         f = feedparser.parse(fd)
         for e in f.entries[:limit]:
             t = e.get("title", "").strip()
-            raw_link = e.get("link", "#")
+            link = e.get("link", "#")
             if t:
                 items.append({
                     "title": t,
-                    "link": clean_news_url(raw_link),
+                    "link": link,
                     "image": extract_thumb(e, cat),
                     "pub": e.get("published_parsed")
                 })
@@ -212,9 +205,9 @@ def scrape_mlb():
                     link = href if href.startswith("http") else f"https://www.mlb.com{href}"
                     is_p = any(k in title.lower() for k in PADRES_KEYS) or "padres" in href
                     if is_p:
-                        padres.append({"title": title, "link": clean_news_url(link), "image": PADRES_LOGO})
+                        padres.append({"title": title, "link": link, "image": PADRES_LOGO})
                     else:
-                        mlb.append({"title": title, "link": clean_news_url(link), "image": MLB_LOGO})
+                        mlb.append({"title": title, "link": link, "image": MLB_LOGO})
         except Exception:
             pass
     return padres, mlb
@@ -273,10 +266,8 @@ def fetch_tech_and_industry_articles():
     if len(snacks_items) < 4:
         snacks_items += fetch_rss("https://sherwood.news/feed/", 6, "ai")
 
-    # 4 articles from The Rundown AI
-    rundown_items = fetch_rss("https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml", 8, "ai")
-    if len(rundown_items) < 4:
-        rundown_items += fetch_rss("https://rss.beehiiv.com/feeds/2b761741-2c06-4444-a093-6c845b4129b0.xml", 6, "ai")
+    # 4 articles from The Decoder (Direct open AI breakthroughs, zero login prompts)
+    decoder_items = fetch_rss("https://the-decoder.com/feed/", 8, "ai")
 
     # 2 articles from TechCrunch AI
     tc_items = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 6, "ai")
@@ -291,13 +282,13 @@ def fetch_tech_and_industry_articles():
             if len(final_list) == 4:
                 break
 
-    rundown_count = 0
-    for item in rundown_items:
+    decoder_count = 0
+    for item in decoder_items:
         if item["title"] not in seen and len(item["title"]) > 10:
             seen.add(item["title"])
             final_list.append(item)
-            rundown_count += 1
-            if rundown_count == 4:
+            decoder_count += 1
+            if decoder_count == 4:
                 break
 
     tc_count = 0
@@ -403,123 +394,3 @@ def get_quotes(tickers):
             pass
         out.append({
             "ticker": sym,
-            "price": f"${p:,.2f}" if p else "N/A",
-            "pct_num": chg,
-            "pct": f"{chg:+.2f}%",
-            "positive": chg >= 0,
-            "url": get_fin_url(sym)
-        })
-    out.sort(key=lambda x: x["pct_num"], reverse=True)
-    return out
-
-def get_available_flash_models():
-    priority_order = [
-        "gemini-3.8-flash",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-flash-latest"
-    ]
-    discovered = []
-    try:
-        for m in client.models.list():
-            name = m.name.replace("models/", "")
-            if "flash" in name.lower() and not name.endswith("-exp") and "tts" not in name.lower():
-                discovered.append(name)
-    except Exception as e:
-        print("Models notice:", str(e))
-    ordered = [m for m in priority_order if m in discovered]
-    for d in discovered:
-        if d not in ordered:
-            ordered.append(d)
-    return ordered if ordered else ["gemini-3.8-flash", "gemini-2.0-flash"]
-
-def get_js():
-    if os.path.exists("widget.js"):
-        with open("widget.js", "r", encoding="utf-8") as f:
-            code = f.read().strip()
-    else:
-        code = DEFAULT_JS_CONTENT.strip()
-        with open("widget.js", "w", encoding="utf-8") as f:
-            f.write(code)
-    return f"<script>\n{code}\n</script>"
-
-def run_agent():
-    print("Collecting news feeds...")
-    world = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
-    
-    print("Fetching FOX 5 San Diego local news...")
-    sd = fetch_fox5_news()
-    
-    padres, mlb = fetch_padres_stories()
-    
-    print("Fetching tech & industry news (4 Snacks, 4 Rundown AI, 2 TechCrunch)...")
-    ai_tech_items = fetch_tech_and_industry_articles()
-
-    print("Scanning high-conviction catalysts & federal procurement...")
-    catalysts = get_catalyst_alerts()
-    print("Detected active signals:", len(catalysts))
-
-    holdings = get_quotes(HOLDINGS)
-    watchlist = get_quotes(WATCHLIST)
-
-    prompt_data = {
-        "catalysts": catalysts,
-        "padres": padres,
-        "mlb": mlb,
-        "world": world,
-        "sd": sd,
-        "ai": ai_tech_items,
-        "holdings": holdings,
-        "watchlist": watchlist
-    }
-
-    instruction = (
-        "Generate a complete, single-page HTML executive briefing dashboard.\n"
-        "Data payload in JSON format:\n"
-        + json.dumps(prompt_data) + "\n\n"
-        "MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:\n"
-        "1. NO TABS. Display all content in open, simultaneous side-by-side split panels.\n"
-        "2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.\n"
-        "3. CSS KEYFRAME: @keyframes pulse-alert { 0%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} 50%{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);} 100%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} }\n"
-        "4. CATALYST RADAR BANNER: If 'catalysts' array is non-empty, render an alert container spanning the full width above the three columns (padding 18px 26px, margin-bottom 22px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between). If empty, render nothing.\n"
-        "5. THREE-COLUMN TOP LEVEL LAYOUT:\n"
-        "   - LEFT (270px width): 'Spring Valley 14-Day Forecast' card. Vertically expand card downward alongside center feed. Contains <div id='weather-forecast-list' style='display:flex;flex-direction:column;justify-content:space-between;height:100%;'>Loading forecast...</div>\n"
-        "   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Snacks, 4 from The Rundown AI, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).\n"
-        "   - RIGHT (330px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto) listing ALL items in 'holdings' sorted descending with ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card listing all items in 'watchlist'.\n"
-        "6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.\n"
-        "7. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."
-    )
-
-    models = get_available_flash_models()
-    resp = None
-    for m in models:
-        for attempt in range(2):
-            try:
-                print("Calling model:", m)
-                resp = client.models.generate_content(model=m, contents=instruction)
-                if resp and resp.text:
-                    break
-            except Exception as err:
-                print("Model retry error:", str(err))
-                time.sleep(3)
-        if resp and resp.text:
-            break
-
-    if not resp or not resp.text:
-        raise RuntimeError("Generation failed across all available models.")
-
-    html = resp.text.replace("```html", "").replace("```", "").strip()
-    js = get_js()
-    if "[[WEATHER_AND_PADRES_JS]]" in html:
-        html = html.replace("[[WEATHER_AND_PADRES_JS]]", js)
-    elif "</body>" in html:
-        html = html.replace("</body>", f"{js}</body>")
-    else:
-        html += js
-
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html)
-    print("index.html successfully updated!")
-
-if __name__ == "__main__":
-    run_agent()
