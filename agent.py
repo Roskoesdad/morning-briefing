@@ -5,12 +5,40 @@ from google import genai
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# 23 Active Assets (ORCL & WDC integrated)
-HOLDINGS = [
-    "BTC-USD", "XRP-USD", "DOGE-USD", "SOL-USD", "BRK-B", "WMT",
-    "AAPL", "AMZN", "MSFT", "NVDA", "DLTR", "VLO", "COST", "HOOD",
-    "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO", "TMO", "WDC", "ORCL"
-]
+# Portfolio Configuration & Exact Holdings
+PORTFOLIO_CONFIG = {
+    "net_deposits": 6654.74,
+    "cash": 3.56,  # $3.13 Robinhood cash + $0.43 E*TRADE cash
+    "equities": {
+        "AAPL": 2.02,
+        "AMZN": 1.02,
+        "BRK-B": 1.55,
+        "COST": 0.18714,
+        "DLTR": 1.02,
+        "EQIX": 0.310956,
+        "GOOGL": 1.46,
+        "HOOD": 2.00,
+        "META": 0.154687,
+        "MSFT": 2.37,
+        "NVDA": 5.03,
+        "ORCL": 0.379276,
+        "PLTR": 1.00,
+        "TMO": 0.108713,
+        "TSM": 0.127575,
+        "VLO": 1.02,
+        "VOO": 0.142004,
+        "WDC": 0.140095,
+        "WMT": 3.79,
+    },
+    "crypto": {
+        "BTC-USD": 0.04313012,
+        "DOGE-USD": 73.62,
+        "SOL-USD": 0.02192,
+        "XRP-USD": 47.055,
+    }
+}
+
+HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["crypto"].keys())
 
 # Active Watchlist (ANET backfilled, ORCL graduated to Holdings)
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
@@ -175,6 +203,54 @@ def fetch_fox5():
                     return out
     return out[:5]
 
+def calculate_portfolio_summary():
+    """Calculates all-time returns, day gains, and total valuation across Robinhood and E*TRADE."""
+    total_current_equity = PORTFOLIO_CONFIG["cash"]
+    total_prev_close_equity = PORTFOLIO_CONFIG["cash"]
+
+    all_symbols = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["crypto"].keys())
+
+    for sym in all_symbols:
+        shares = PORTFOLIO_CONFIG["equities"].get(sym) or PORTFOLIO_CONFIG["crypto"].get(sym, 0.0)
+        try:
+            t = yf.Ticker(sym)
+            fi = getattr(t, "fast_info", None)
+            p, prev = None, None
+            if fi and fi.last_price and fi.previous_close:
+                p = float(fi.last_price)
+                prev = float(fi.previous_close)
+            else:
+                h = t.history(period="2d")
+                if len(h) >= 2:
+                    p = float(h["Close"].iloc[-1])
+                    prev = float(h["Close"].iloc[-2])
+                elif len(h) == 1:
+                    p = float(h["Close"].iloc[-1])
+                    prev = p
+
+            if p is not None and prev is not None:
+                total_current_equity += p * shares
+                total_prev_close_equity += prev * shares
+        except Exception:
+            pass
+
+    net_deposits = PORTFOLIO_CONFIG["net_deposits"]
+    all_time_dollar = total_current_equity - net_deposits
+    all_time_pct = (all_time_dollar / net_deposits) * 100.0 if net_deposits else 0.0
+
+    day_dollar = total_current_equity - total_prev_close_equity
+    day_pct = (day_dollar / total_prev_close_equity) * 100.0 if total_prev_close_equity else 0.0
+
+    return {
+        "current_equity": f"${total_current_equity:,.2f}",
+        "net_deposits": f"${net_deposits:,.2f}",
+        "all_time_dollar": f"+${all_time_dollar:,.2f}" if all_time_dollar >= 0 else f"-${abs(all_time_dollar):,.2f}",
+        "all_time_pct": f"{all_time_pct:+.2f}%",
+        "day_dollar": f"+${day_dollar:,.2f}" if day_dollar >= 0 else f"-${abs(day_dollar):,.2f}",
+        "day_pct": f"{day_pct:+.2f}%",
+        "is_day_positive": day_dollar >= 0
+    }
+
 def get_catalysts():
     signals = []
     candidates_pool = []
@@ -332,6 +408,9 @@ def get_candidate_models():
     return candidates
 
 def run_agent():
+    print("Calculating portfolio metrics and syncing market data...")
+    portfolio_summary = calculate_portfolio_summary()
+
     ars = fetch_rss("https://feeds.arstechnica.com/arstechnica/technology-lab", 6, "ai")[:4]
     decoder = fetch_rss("https://the-decoder.com/feed/", 6, "ai")[:4]
     tc = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 4, "ai")[:2]
@@ -339,6 +418,7 @@ def run_agent():
 
     padres, mlb = fetch_padres_stories()
     payload = {
+        "portfolio_summary": portfolio_summary,
         "catalysts": get_catalysts(), "padres": padres, "mlb": mlb,
         "world": fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5),
         "sd": fetch_fox5(), "ai": tech,
@@ -353,21 +433,30 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 1. NO TABS. Display all content in open, simultaneous side-by-side split panels.
 2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
-4. CATALYST RADAR BANNER:
-   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content flex-start, border-radius 14px).
-   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background #ef4444, color #ffffff, font-weight 700, padding 6px 12px, border-radius 6px, font-size 13px, margin-right 20px; flex-shrink: 0).
+
+4. PORTFOLIO EXECUTIVE KPI HEADER (FULL WIDTH AT TOP):
+   - Directly below opening <body>, render a 3-card KPI row spanning full width (margin-bottom: 20px, display: grid, grid-template-columns: repeat(3, 1fr), gap: 16px).
+   - Card 1: Label 'TOTAL PORTFOLIO EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{portfolio_summary['current_equity']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: '{portfolio_summary['net_deposits']} Net Invested' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
+   - Card 2: Label 'ALL-TIME RETURN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{portfolio_summary['all_time_dollar']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{portfolio_summary['all_time_pct']} Total ROI' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
+   - Card 3: Label 'TODAY\\'S GAIN / LOSS' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{portfolio_summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {'#00c805' if portfolio_summary['is_day_positive'] else '#ef4444'}). Sub-text: '{portfolio_summary['day_pct']} Intraday' (font-size: 13px, color: {'#00c805' if portfolio_summary['is_day_positive'] else '#ef4444'}, font-weight: 700, margin-top: 4px).
+
+5. CATALYST RADAR BANNER:
+   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border: 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
+   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background: #ef4444, color: #ffffff, font-weight: 700, padding: 6px 12px, border-radius: 6px, font-size: 13px, margin-right: 20px; flex-shrink: 0).
    - CONTENT of banner:
      - For EACH item in 'catalysts':
        - If item.type is 'SELL' or 'STRONG SELL': Render a distinct pill with red styling. Inside show: <span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <a href='item.url' target='_blank' rel='noopener noreferrer' style='text-decoration:none;color:#991b1b;font-weight:700;'>item.ticker: item.consensus at item.current_price ↗ View Why</a>. If 'replacement_ticker' is present, immediately follow with: <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Replacement: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span>.
        - Otherwise (BUY MORE or BREAKING OUT): Render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>. (CRITICAL: DO NOT output the word 'Consensus' anywhere).
    - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
    - If 'catalysts' is empty, render nothing at all.
-5. THREE-COLUMN TOP LEVEL LAYOUT:
+
+6. THREE-COLUMN TOP LEVEL LAYOUT:
    - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
    - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Ars Technica, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
    - RIGHT (350px width): Top card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
-6. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
-7. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
+
+7. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
+8. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
 
     models = get_candidate_models()
     resp = None
