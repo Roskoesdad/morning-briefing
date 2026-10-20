@@ -207,13 +207,13 @@ def get_catalysts():
                 
                 analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
                 
-                # TRIGGER A: Current Portfolio Holding -> "Scale-In (Buy More)"
+                # TRIGGER A: Current Portfolio Holding -> "BUY MORE"
                 # Requirements: Buy/Strong Buy, >=18% upside, healthy pullback off 52-week peak
                 if tkr in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 18.0 and pullback >= 5.0:
                     signals.append({
                         "ticker": tkr,
                         "group": "Current Holding",
-                        "type": "Scale-In (Buy More)",
+                        "type": "BUY MORE",
                         "upside_num": upside,
                         "vol_ratio": f"+{upside:.0f}% Up",
                         "pct": f"${price:.2f}",
@@ -224,14 +224,14 @@ def get_catalysts():
                         "url": analysis_url
                     })
                 
-                # TRIGGER B: Non-Portfolio Stock -> "New Position Breakout"
+                # TRIGGER B: Non-Portfolio Stock -> "BREAKING OUT"
                 # Requirements: Buy/Strong Buy, >=20% upside, institutional volume surge (>=1.35x) or strong day move (>=2.0%)
                 elif tkr not in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 20.0 and ((vr >= 1.35 and day_pct > 0) or day_pct >= 2.0):
                     grp = "Active Watchlist" if tkr in WATCHLIST else "Broad Market Opportunity"
                     signals.append({
                         "ticker": tkr,
                         "group": grp,
-                        "type": "New Position Breakout",
+                        "type": "BREAKING OUT",
                         "upside_num": upside,
                         "vol_ratio": f"+{upside:.0f}% Up",
                         "pct": f"${price:.2f}",
@@ -311,10 +311,10 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
 4. CATALYST RADAR BANNER:
-   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between, border-radius 14px).
-   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background #ef4444, color #ffffff, font-weight 700, padding 6px 12px, border-radius 6px, font-size 13px, margin-right 16px).
-   - CENTER/CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <strong>[item.type] item.ticker</strong>: Consensus item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>.
-   - RIGHT SIDE of banner: Tag 'HIGH CONVICTION SETUP' (color #b91c1c, font-weight 700, font-size 12px, letter-spacing 0.5px).
+   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content flex-start, border-radius 14px).
+   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background #ef4444, color #ffffff, font-weight 700, padding 6px 12px, border-radius 6px, font-size 13px, margin-right 20px; flex-shrink: 0).
+   - CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker</strong>: Consensus item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>.
+   - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
    - If 'catalysts' is empty, render nothing at all.
 5. THREE-COLUMN TOP LEVEL LAYOUT:
    - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
