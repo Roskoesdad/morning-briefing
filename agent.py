@@ -208,7 +208,6 @@ def get_catalysts():
                 analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
                 
                 # TRIGGER A: Current Portfolio Holding -> "BUY MORE"
-                # Requirements: Buy/Strong Buy, >=18% upside, healthy pullback off 52-week peak
                 if tkr in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 18.0 and pullback >= 5.0:
                     signals.append({
                         "ticker": tkr,
@@ -225,7 +224,6 @@ def get_catalysts():
                     })
                 
                 # TRIGGER B: Non-Portfolio Stock -> "BREAKING OUT"
-                # Requirements: Buy/Strong Buy, >=20% upside, institutional volume surge (>=1.35x) or strong day move (>=2.0%)
                 elif tkr not in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 20.0 and ((vr >= 1.35 and day_pct > 0) or day_pct >= 2.0):
                     grp = "Active Watchlist" if tkr in WATCHLIST else "Broad Market Opportunity"
                     signals.append({
@@ -313,7 +311,7 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 4. CATALYST RADAR BANNER:
    - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content flex-start, border-radius 14px).
    - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background #ef4444, color #ffffff, font-weight 700, padding 6px 12px, border-radius 6px, font-size 13px, margin-right 20px; flex-shrink: 0).
-   - CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker</strong>: Consensus item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>.
+   - CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>. (CRITICAL: DO NOT output the word 'Consensus' anywhere).
    - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
    - If 'catalysts' is empty, render nothing at all.
 5. THREE-COLUMN TOP LEVEL LAYOUT:
