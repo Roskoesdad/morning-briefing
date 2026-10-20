@@ -71,6 +71,72 @@ PORTFOLIO_CONFIG = {
     }
 }
 
+COMPANY_NAMES = {
+    "AAPL": "Apple",
+    "AMZN": "Amazon",
+    "BRK-B": "Berkshire Hathaway",
+    "COST": "Costco",
+    "DLTR": "Dollar Tree",
+    "EQIX": "Equinix",
+    "GOOGL": "Alphabet (Google)",
+    "HOOD": "Robinhood",
+    "META": "Meta",
+    "MSFT": "Microsoft",
+    "NVDA": "Nvidia",
+    "ORCL": "Oracle",
+    "PLTR": "Palantir",
+    "TMO": "Thermo Fisher",
+    "TSM": "TSMC",
+    "VLO": "Valero Energy",
+    "VOO": "Vanguard S&P 500",
+    "WDC": "Western Digital",
+    "WMT": "Walmart",
+    "BTC-USD": "Bitcoin",
+    "DOGE-USD": "Dogecoin",
+    "SOL-USD": "Solana",
+    "XRP-USD": "XRP",
+    "USAR": "USA Rare Earth",
+    "ISRG": "Intuitive Surgical",
+    "LMT": "Lockheed Martin",
+    "MU": "Micron Technology",
+    "ANET": "Arista Networks",
+    "CSCO": "Cisco",
+    "VRT": "Vertiv",
+    "AVGO": "Broadcom",
+    "AMD": "AMD",
+    "INTC": "Intel",
+    "QCOM": "Qualcomm",
+    "ARM": "Arm Holdings",
+    "SMCI": "Super Micro",
+    "PANW": "Palo Alto Networks",
+    "CRWD": "CrowdStrike",
+    "NOW": "ServiceNow",
+    "CRM": "Salesforce",
+    "SNOW": "Snowflake",
+    "DELL": "Dell Technologies",
+    "HPE": "Hewlett Packard Enterprise",
+    "UBER": "Uber",
+    "ABNB": "Airbnb",
+    "NFLX": "Netflix",
+    "DIS": "Disney",
+    "TSLA": "Tesla",
+    "LLY": "Eli Lilly",
+    "UNH": "UnitedHealth",
+    "JNJ": "Johnson & Johnson",
+    "ABBV": "AbbVie",
+    "CAT": "Caterpillar",
+    "DE": "Deere & Co",
+    "GE": "GE Aerospace",
+    "HON": "Honeywell",
+    "RTX": "RTX",
+    "NOC": "Northrop Grumman",
+    "GD": "General Dynamics",
+    "BA": "Boeing",
+    "JPM": "JPMorgan Chase",
+    "GS": "Goldman Sachs",
+    "MS": "Morgan Stanley"
+}
+
 HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["crypto"].keys())
 
 # Active Watchlist
@@ -103,7 +169,7 @@ function openReasonsModal(ticker, type, consensus, price, target, upside, reason
   const overlay = document.getElementById('reasons-modal-overlay');
   if(!overlay) return;
   document.getElementById('modal-title').innerText = ticker + ' (' + type + ') Analysis';
-  document.getElementById('modal-metrics').innerText = 'Consensus: ' + consensus + ' | Price: ' + price + ' | Target: ' + target + ' (' + upside + ')';
+  document.getElementById('modal-metrics').innerText = 'Consensus: ' + consensus + ' | Price: ' + price;
   
   let reasons = [];
   try {
@@ -260,8 +326,9 @@ def fetch_fox5():
     return out[:5]
 
 def generate_sell_reasons(ticker, current_price, target_price, upside, rec):
+    company_name = COMPANY_NAMES.get(ticker, ticker)
     try:
-        prompt = f"""Provide exactly 3 concise, objective institutional reasons why an investor holding {ticker} would consider selling or rotating out at current levels.
+        prompt = f"""Provide exactly 3 concise, objective institutional reasons why an investor holding {company_name} ({ticker}) would consider selling or rotating out at current levels.
 Current Price: ${current_price:.2f}, Target Price: ${target_price:.2f}, Analyst Upside: {upside:.1f}%, Consensus: {rec}.
 Focus on fundamentals (valuation multiple, margin compression, sector rotation, regulatory/macro risks).
 Output ONLY a JSON array containing exactly 3 strings without markdown."""
@@ -279,9 +346,9 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
     except Exception:
         pass
     return [
-        f"Valuation Target Inversion: Current price (${current_price:.2f}) leaves limited upside against the 12-month mean target (${target_price:.2f}).",
-        "Sector Margin Compression: Cyclical refining or hardware margins face normalization risks relative to peak levels.",
-        "Capital Reallocation: Reallocating proceeds into higher upside holdings offers improved risk-adjusted growth."
+        f"Valuation Target Inversion: Current market price (${current_price:.2f}) leaves limited upside against the 12-month mean target.",
+        f"Sector Rebalancing: Peak multiple expansion for {company_name} creates potential for capital rotation into discounted opportunities.",
+        "Capital Efficiency: Reallocating proceeds into higher upside holdings offers improved risk-adjusted growth."
     ]
 
 def calculate_portfolio_summary():
@@ -371,6 +438,7 @@ def get_catalysts():
             target = info.get("targetMeanPrice")
             rec = str(info.get("recommendationKey", "")).lower()
             num_analysts = info.get("numberOfAnalystOpinions", 0)
+            c_name = COMPANY_NAMES.get(tkr, tkr)
             
             if price and target and target > 0 and price > 0 and len(h) >= 15:
                 upside = ((target - price) / price) * 100.0
@@ -392,6 +460,7 @@ def get_catalysts():
                     
                     signals.append({
                         "ticker": tkr,
+                        "name": c_name,
                         "group": "Current Holding",
                         "type": action_badge,
                         "upside_num": upside,
@@ -410,6 +479,7 @@ def get_catalysts():
                 if rec in ["buy", "strong_buy"] and upside >= 18.0:
                     candidates_pool.append({
                         "ticker": tkr,
+                        "name": c_name,
                         "rec": rec,
                         "upside": upside,
                         "price": price,
@@ -431,14 +501,16 @@ def get_catalysts():
         if s.get("is_sell") and best_replacement:
             rep_type = "Holding" if best_replacement["in_holdings"] else "New"
             s["replacement_ticker"] = best_replacement["ticker"]
+            s["replacement_name"] = best_replacement["name"]
             s["replacement_url"] = best_replacement["url"]
-            s["replacement_text"] = f"{best_replacement['ticker']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
+            s["replacement_text"] = f"{best_replacement['name']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
 
     if not signals:
         for c in candidates_pool[:4]:
             if c["in_holdings"] and c["pullback"] >= 5.0:
                 signals.append({
                     "ticker": c["ticker"],
+                    "name": c["name"],
                     "group": "Current Holding",
                     "type": "BUY MORE",
                     "upside_num": c["upside"],
@@ -454,6 +526,7 @@ def get_catalysts():
             elif not c["in_holdings"] and ((c["vr"] >= 1.35 and c["day_pct"] > 0) or c["day_pct"] >= 2.0):
                 signals.append({
                     "ticker": c["ticker"],
+                    "name": c["name"],
                     "group": "Active Watchlist" if c["ticker"] in WATCHLIST else "Broad Market Opportunity",
                     "type": "BREAKING OUT",
                     "upside_num": c["upside"],
@@ -488,6 +561,7 @@ def get_quotes(tickers):
             pass
         out.append({
             "ticker": sym,
+            "name": COMPANY_NAMES.get(sym, sym),
             "price": f"${p:,.2f}" if p else "N/A",
             "pct_num": chg,
             "pct": f"{chg:+.2f}%",
@@ -570,11 +644,13 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
    - CONTENT of banner:
      - For EACH item in 'catalysts':
        - If item.is_sell is True:
-         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <button onclick="openReasonsModal('item.ticker', 'item.type', 'item.consensus', 'item.current_price', 'item.target_price', 'item.vol_ratio', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
+         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> item.consensus at item.current_price <button onclick="openReasonsModal('item.name', 'item.type', 'item.consensus', 'item.current_price', 'item.target_price', 'item.vol_ratio', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
        - Otherwise (BUY MORE or BREAKING OUT):
-         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
+         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> item.consensus at item.current_price <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
+   - CRITICAL REQUIREMENT: DO NOT render target price or spread in parenthesis anywhere on the banner pills (DO NOT render things like '(Target $328.35, -3% Target)').
+   - Always use full company names (e.g. 'Apple' instead of 'AAPL', 'Valero Energy' instead of 'VLO', 'Oracle' instead of 'ORCL').
    - DO NOT render 'ROTATE CAPITAL' anywhere. Use strictly 'SELL' or 'STRONG SELL'.
-   - DO NOT render the word 'Replacement:'. Use strictly '🔄 Buy:'.
+   - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'.
    - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
    - If 'catalysts' is empty, render nothing at all.
 
@@ -587,7 +663,7 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
        - 403(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 403(B) (56016)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_403b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div></div></div>
        - 457(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 457(B) (65270)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_457b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div></div></div>
        - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>YTD Payroll Saved:</strong> {summary['retirement_ytd_contrib']}</span><span style='font-weight:700;color:#0284c7;'>YTD ROI: {summary['retirement_ytd_roi']}</span></div>
-     - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
+     - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show full company name (alongside ticker if desired), price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
 
 7. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
 8. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
