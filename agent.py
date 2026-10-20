@@ -99,6 +99,29 @@ DEFAULT_JS = """function toggleWeatherDetail(idx){
   }
 }
 
+function openReasonsModal(ticker, type, consensus, price, target, upside, reasonsJson){
+  const overlay = document.getElementById('reasons-modal-overlay');
+  if(!overlay) return;
+  document.getElementById('modal-title').innerText = ticker + ' (' + type + ') Analysis';
+  document.getElementById('modal-metrics').innerText = 'Consensus: ' + consensus + ' | Price: ' + price + ' | Target: ' + target + ' (' + upside + ')';
+  
+  let reasons = [];
+  try {
+    reasons = JSON.parse(decodeURIComponent(reasonsJson));
+  } catch(e) {
+    reasons = ["Valuation target compression.", "Capital rotation into secular growth opportunities.", "Margin headwind or technical momentum exhaustion."];
+  }
+  
+  const list = document.getElementById('modal-reasons-list');
+  list.innerHTML = reasons.map(r => '<li style="margin-bottom:10px;line-height:1.45;color:#334155;">' + r + '</li>').join('');
+  overlay.style.display = 'flex';
+}
+
+function closeReasonsModal(){
+  const overlay = document.getElementById('reasons-modal-overlay');
+  if(overlay) overlay.style.display = 'none';
+}
+
 async function updateWeather(){
   const c=document.getElementById('weather-forecast-list');if(!c)return;
   try{
@@ -236,6 +259,31 @@ def fetch_fox5():
                     return out
     return out[:5]
 
+def generate_sell_reasons(ticker, current_price, target_price, upside, rec):
+    try:
+        prompt = f"""Provide exactly 3 concise, objective institutional reasons why an investor holding {ticker} would consider trimming, selling, or rotating out at current levels.
+Current Price: ${current_price:.2f}, Target Price: ${target_price:.2f}, Analyst Upside: {upside:.1f}%, Consensus: {rec}.
+Focus on fundamentals (valuation multiple, margin compression, sector rotation, regulatory/macro risks).
+Output ONLY a JSON array containing exactly 3 strings without markdown."""
+        models = get_candidate_models()
+        for m in models:
+            try:
+                r = client.models.generate_content(model=m, contents=prompt)
+                if r and r.text:
+                    clean = r.text.replace("```json", "").replace("```", "").strip()
+                    parsed = json.loads(clean)
+                    if isinstance(parsed, list) and len(parsed) >= 3:
+                        return parsed[:3]
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return [
+        f"Valuation Target Inversion: Current price (${current_price:.2f}) leaves limited upside against the 12-month mean target (${target_price:.2f}).",
+        "Sector Margin Compression: Cyclical refining margins (crack spreads) face normalization risks relative to peak levels.",
+        "Capital Rotation Efficiency: Reallocating proceeds into higher secular upside holdings offers improved risk-adjusted growth."
+    ]
+
 def calculate_portfolio_summary():
     """Calculates all-time returns, day gains, and total valuation across Brokerages and UC Retirement."""
     total_brokerage_equity = PORTFOLIO_CONFIG["cash"]
@@ -334,22 +382,28 @@ def get_catalysts():
                 day_pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
                 analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
                 
-                is_sell_rating = rec in ["sell", "strong_sell", "underperform"]
-                is_deteriorating = upside <= -5.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
+                is_official_sell = rec in ["sell", "strong_sell", "underperform"]
+                # Price target inversion or momentum breakdown
+                is_target_inversion = upside <= -3.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
                 
-                if tkr in HOLDINGS and (is_sell_rating or is_deteriorating):
+                if tkr in HOLDINGS and (is_official_sell or is_target_inversion):
+                    action_badge = "STRONG SELL" if rec == "strong_sell" else ("SELL" if is_official_sell else "ROTATE CAPITAL")
+                    reasons_list = generate_sell_reasons(tkr, price, target, upside, rec)
+                    reasons_encoded = urllib.parse.quote(json.dumps(reasons_list))
+                    
                     signals.append({
                         "ticker": tkr,
                         "group": "Current Holding",
-                        "type": "SELL" if rec in ["sell", "underperform"] else "STRONG SELL",
+                        "type": action_badge,
                         "upside_num": upside,
                         "vol_ratio": f"{upside:+.0f}% Target",
                         "pct": f"${price:.2f}",
-                        "consensus": rec.upper().replace('_', ' ') if rec else "BEARISH DOWNTREND",
+                        "consensus": rec.upper().replace('_', ' ') if is_official_sell else "TARGET INVERSION",
                         "target_price": f"${target:.2f}",
                         "current_price": f"${price:.2f}",
                         "analysts": num_analysts,
                         "url": analysis_url,
+                        "reasons_encoded": reasons_encoded,
                         "is_sell": True
                     })
                     continue
@@ -487,24 +541,43 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
 
-4. EXECUTIVE WEALTH & RETIREMENT HEADER (FULL WIDTH AT TOP):
+4. MODAL DIALOG INJECTION (FOR 3 REASONS TO ROTATE/SELL):
+   - Immediately before closing </body>, include this hidden modal HTML structure:
+     <div id="reasons-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px);">
+       <div style="background:#ffffff;border-radius:14px;padding:24px;max-width:540px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);position:relative;border:1px solid #e2e8f0;">
+         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f1f5f9;padding-bottom:12px;margin-bottom:14px;">
+           <h3 id="modal-title" style="margin:0;font-size:18px;color:#0f172a;font-weight:800;"></h3>
+           <button onclick="closeReasonsModal()" style="background:transparent;border:none;font-size:20px;cursor:pointer;color:#64748b;font-weight:700;">✕</button>
+         </div>
+         <div id="modal-metrics" style="font-size:12px;color:#64748b;margin-bottom:14px;font-weight:600;background:#f8fafc;padding:8px 12px;border-radius:6px;"></div>
+         <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">💡 Key Actionable Reasons:</div>
+         <ul id="modal-reasons-list" style="padding-left:20px;margin-top:0;margin-bottom:18px;font-size:13px;"></ul>
+         <div style="display:flex;justify-content:flex-end;">
+           <button onclick="closeReasonsModal()" style="background:#0f172a;color:#ffffff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;">Understood</button>
+         </div>
+       </div>
+     </div>
+
+5. EXECUTIVE WEALTH & RETIREMENT HEADER (FULL WIDTH AT TOP):
    - Directly below opening <body>, render a 4-card KPI row spanning full width (margin-bottom: 20px, display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px).
    - Card 1 (Liquid Net Worth): Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Combined Brokerage, Crypto & UC Plans' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
    - Card 2 (UC Retirement Combined): Label 'UC RETIREMENT (403b + 457b)' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['retirement_balance']}' (font-size: 26px, font-weight: 800, color: #0284c7). Sub-text: '{summary['retirement_gain']} ({summary['retirement_gain_pct']} Return)' (font-size: 13px, color: #0284c7, font-weight: 700, margin-top: 4px).
    - Card 3 (Active Brokerage Trading): Label 'ACTIVE BROKERAGE EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['brokerage_equity']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
    - Card 4 (Today's Gain/Loss): Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
 
-5. CATALYST RADAR BANNER:
-   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
+6. CATALYST RADAR BANNER:
+   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border: 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
    - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background: #ef4444, color: #ffffff, font-weight: 700, padding 6px 12px, border-radius 6px, font-size: 13px, margin-right: 20px; flex-shrink: 0).
    - CONTENT of banner:
      - For EACH item in 'catalysts':
-       - If item.type is 'SELL' or 'STRONG SELL': Render a distinct pill with red styling. Inside show: <span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <a href='item.url' target='_blank' rel='noopener noreferrer' style='text-decoration:none;color:#991b1b;font-weight:700;'>item.ticker: item.consensus at item.current_price ↗ View Why</a>. If 'replacement_ticker' is present, immediately follow with: <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Replacement: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span>.
-       - Otherwise (BUY MORE or BREAKING OUT): Render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>. (CRITICAL: DO NOT output the word 'Consensus' anywhere).
+       - If item.is_sell is True:
+         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <button onclick="openReasonsModal('item.ticker', 'item.type', 'item.consensus', 'item.current_price', 'item.target_price', 'item.vol_ratio', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Replacement: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
+       - Otherwise (BUY MORE or BREAKING OUT):
+         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
    - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
    - If 'catalysts' is empty, render nothing at all.
 
-6. THREE-COLUMN TOP LEVEL LAYOUT:
+7. THREE-COLUMN TOP LEVEL LAYOUT:
    - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
    - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Ars Technica, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
    - RIGHT (350px width):
@@ -515,8 +588,8 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
        - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>YTD Payroll Saved:</strong> {summary['retirement_ytd_contrib']}</span><span style='font-weight:700;color:#0284c7;'>YTD ROI: {summary['retirement_ytd_roi']}</span></div>
      - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
 
-7. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
-8. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
+8. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
+9. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
 
     models = get_candidate_models()
     resp = None
