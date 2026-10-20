@@ -38,15 +38,25 @@ PORTFOLIO_CONFIG = {
     },
     "retirement": {
         "as_of": "Oct 21, 2026",
-        "combined_balance": 36087.69,
+        "combined_balance": 172552.79,
+        "dc_plans_balance": 36087.69,
         "total_cost_basis": 30115.61,
         "total_unrealized_gain": 5972.08,
         "total_unrealized_gain_pct": 19.83,
         "ytd_contributions": 11550.00,
         "ytd_roi": "+8.89%",
         "plans": {
+            "ucrp": {
+                "name": "UCRP Pension (2013 Tier)",
+                "balance": 136465.10,
+                "contributions": 99282.42,
+                "interest": 37182.68,
+                "service_credit": 12.6114,
+                "health_service": 12.6114,
+                "start_date": "02/2014"
+            },
             "403b": {
-                "name": "UC 403(B) PLAN (Pre-Tax)",
+                "name": "UC 403(B) (Pre-Tax)",
                 "fund": "UC PATHWAY 2040",
                 "balance": 20654.70,
                 "cost_basis": 16953.11,
@@ -57,7 +67,7 @@ PORTFOLIO_CONFIG = {
                 "per_paycheck": 300.00
             },
             "457b": {
-                "name": "UC 457(B) PLAN (Roth After-Tax)",
+                "name": "UC 457(B) (Roth After-Tax)",
                 "fund": "UC PATHWAY 2040",
                 "balance": 15432.99,
                 "cost_basis": 13162.50,
@@ -352,7 +362,7 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
     ]
 
 def calculate_portfolio_summary():
-    """Calculates all-time returns, day gains, and total valuation across Brokerages and UC Retirement."""
+    """Calculates all-time returns, day gains, and total valuation across Brokerages, UCRP Pension, and UC Savings."""
     total_brokerage_equity = PORTFOLIO_CONFIG["cash"]
     total_prev_close_equity = PORTFOLIO_CONFIG["cash"]
 
@@ -390,8 +400,10 @@ def calculate_portfolio_summary():
     day_pct = (day_dollar / total_prev_close_equity) * 100.0 if total_prev_close_equity else 0.0
 
     ret_data = PORTFOLIO_CONFIG["retirement"]
-    combined_retirement = ret_data["combined_balance"]
-    total_net_worth = total_brokerage_equity + combined_retirement
+    total_uc_retirement = ret_data["combined_balance"]
+    total_net_worth = total_brokerage_equity + total_uc_retirement
+
+    ucrp = ret_data["plans"]["ucrp"]
 
     return {
         "total_net_worth": f"${total_net_worth:,.2f}",
@@ -402,12 +414,10 @@ def calculate_portfolio_summary():
         "day_dollar": f"+${day_dollar:,.2f}" if day_dollar >= 0 else f"-${abs(day_dollar):,.2f}",
         "day_pct": f"{day_pct:+.2f}%",
         "is_day_positive": day_dollar >= 0,
-        "retirement_balance": f"${combined_retirement:,.2f}",
-        "retirement_cost_basis": f"${ret_data['total_cost_basis']:,.2f}",
-        "retirement_gain": f"+${ret_data['total_unrealized_gain']:,.2f}",
-        "retirement_gain_pct": f"+{ret_data['total_unrealized_gain_pct']:.2f}%",
-        "retirement_ytd_roi": ret_data["ytd_roi"],
-        "retirement_ytd_contrib": f"${ret_data['ytd_contributions']:,.2f}",
+        "uc_total_balance": f"${total_uc_retirement:,.2f}",
+        "ucrp_balance": f"${ucrp['balance']:,.2f}",
+        "ucrp_service": f"{ucrp['service_credit']:.2f} yrs",
+        "uc_dc_balance": f"${ret_data['dc_plans_balance']:,.2f}",
         "retirement_as_of": ret_data["as_of"],
         "plan_403b_bal": f"${ret_data['plans']['403b']['balance']:,.2f}",
         "plan_403b_gain": f"+${ret_data['plans']['403b']['unrealized_gain']:,.2f}",
@@ -627,8 +637,8 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 
 5. EXECUTIVE WEALTH & RETIREMENT HEADER (FULL WIDTH AT TOP):
    - Directly below opening <body>, render a 4-card KPI row spanning full width (margin-bottom: 20px, display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px).
-   - Card 1 (Liquid Net Worth): Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Combined Brokerage, Crypto & UC Plans' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
-   - Card 2 (UC Retirement Combined): Label 'UC RETIREMENT (403b + 457b)' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['retirement_balance']}' (font-size: 26px, font-weight: 800, color: #0284c7). Sub-text: '{summary['retirement_gain']} ({summary['retirement_gain_pct']} Return)' (font-size: 13px, color: #0284c7, font-weight: 700, margin-top: 4px).
+   - Card 1 (Liquid Net Worth): Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Brokerage + Crypto + Full UC Benefits' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
+   - Card 2 (UC Retirement Combined): Label 'TOTAL UC RETIREMENT & PENSION' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['uc_total_balance']}' (font-size: 26px, font-weight: 800, color: #0284c7). Sub-text: 'UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})' (font-size: 13px, color: #0284c7, font-weight: 700, margin-top: 4px).
    - Card 3 (Active Brokerage Trading): Label 'ACTIVE BROKERAGE EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['brokerage_equity']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
    - Card 4 (Today's Gain/Loss): Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
 
@@ -644,20 +654,21 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
    - CRITICAL RESTRICTIONS:
      - DO NOT render 'TARGET INVERSION' anywhere.
      - DO NOT render target prices or spreads in parentheses (no '(Target $328.35, -3% Target)').
-     - DO NOT render 'ROTATE CAPITAL'. Use strictly 'SELL' or 'STRONG SELL'[cite: 6].
-     - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'[cite: 6].
-     - Always use full company names (e.g., 'Apple', 'Valero Energy', 'Oracle')[cite: 7].
+     - DO NOT render 'ROTATE CAPITAL'. Use strictly 'SELL' or 'STRONG SELL'.
+     - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'.
+     - Always use full company names (e.g., 'Apple', 'Valero Energy', 'Oracle').
    - If 'catalysts' is empty, render nothing at all.
 
 7. THREE-COLUMN TOP LEVEL LAYOUT:
    - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
    - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Ars Technica, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
    - RIGHT (350px width):
-     - Top card: 'Institutional Retirement Tracker' with clean white background, border-radius 12px, border 1px solid #e2e8f0, padding 16px, margin-bottom 16px. Inside render:
-       - Header: <div style='font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;'><span>🏛️ UC Retirement Plans</span><span style='font-size:11px;font-weight:600;color:#64748b;'>As of {summary['retirement_as_of']}</span></div>
-       - 403(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 403(B) (Pre-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_403b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div></div></div>
-       - 457(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 457(B) (Roth After-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_457b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div></div></div>
-       - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>YTD Payroll Saved:</strong> {summary['retirement_ytd_contrib']}</span><span style='font-weight:700;color:#0284c7;'>YTD ROI: {summary['retirement_ytd_roi']}</span></div>
+     - Top card: 'Institutional UC Retirement & Pension' with clean white background, border-radius 12px, border 1px solid #e2e8f0, padding 16px, margin-bottom 16px. Inside render:
+       - Header: <div style='font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;'><span>🏛️ UC Retirement & Pension</span><span style='font-size:11px;font-weight:600;color:#64748b;'>As of {summary['retirement_as_of']}</span></div>
+       - UCRP Pension Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UCRP Pension (2013 Tier)</div><div style='font-size:11px;color:#64748b;'>{summary['ucrp_service']} Service Credit</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['ucrp_balance']}</div><div style='font-size:11px;color:#0284c7;font-weight:700;'>Defined Benefit</div></div></div>
+       - 403(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 403(B) (Pre-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_403b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div></div></div>
+       - 457(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 457(B) (Roth After-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_457b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div></div></div>
+       - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>Total Institutional:</strong> {summary['uc_total_balance']}</span><span style='font-weight:700;color:#0284c7;'>Health & Welf: {summary['ucrp_service']}</span></div>
      - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show full company name, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
 
 7. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
