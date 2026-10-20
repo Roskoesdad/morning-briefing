@@ -411,6 +411,8 @@ def run_agent():
     print("Calculating portfolio metrics and syncing market data...")
     portfolio_summary = calculate_portfolio_summary()
 
+    day_color = "#00c805" if portfolio_summary["is_day_positive"] else "#ef4444"
+
     ars = fetch_rss("https://feeds.arstechnica.com/arstechnica/technology-lab", 6, "ai")[:4]
     decoder = fetch_rss("https://the-decoder.com/feed/", 6, "ai")[:4]
     tc = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 4, "ai")[:2]
@@ -438,11 +440,11 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
    - Directly below opening <body>, render a 3-card KPI row spanning full width (margin-bottom: 20px, display: grid, grid-template-columns: repeat(3, 1fr), gap: 16px).
    - Card 1: Label 'TOTAL PORTFOLIO EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{portfolio_summary['current_equity']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: '{portfolio_summary['net_deposits']} Net Invested' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
    - Card 2: Label 'ALL-TIME RETURN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{portfolio_summary['all_time_dollar']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{portfolio_summary['all_time_pct']} Total ROI' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
-   - Card 3: Label 'TODAY\\'S GAIN / LOSS' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{portfolio_summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {'#00c805' if portfolio_summary['is_day_positive'] else '#ef4444'}). Sub-text: '{portfolio_summary['day_pct']} Intraday' (font-size: 13px, color: {'#00c805' if portfolio_summary['is_day_positive'] else '#ef4444'}, font-weight: 700, margin-top: 4px).
+   - Card 3: Label 'TODAY\\'S GAIN / LOSS' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{portfolio_summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{portfolio_summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
 
 5. CATALYST RADAR BANNER:
-   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border: 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
-   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background: #ef4444, color: #ffffff, font-weight: 700, padding: 6px 12px, border-radius: 6px, font-size: 13px, margin-right: 20px; flex-shrink: 0).
+   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
+   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background: #ef4444, color: #ffffff, font-weight: 700, padding 6px 12px, border-radius 6px, font-size: 13px, margin-right: 20px; flex-shrink: 0).
    - CONTENT of banner:
      - For EACH item in 'catalysts':
        - If item.type is 'SELL' or 'STRONG SELL': Render a distinct pill with red styling. Inside show: <span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <a href='item.url' target='_blank' rel='noopener noreferrer' style='text-decoration:none;color:#991b1b;font-weight:700;'>item.ticker: item.consensus at item.current_price ↗ View Why</a>. If 'replacement_ticker' is present, immediately follow with: <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Replacement: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span>.
