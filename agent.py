@@ -5,20 +5,20 @@ from google import genai
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# 22 Active Assets
+# 23 Active Assets (ORCL & WDC integrated)
 HOLDINGS = [
     "BTC-USD", "XRP-USD", "DOGE-USD", "SOL-USD", "BRK-B", "WMT",
     "AAPL", "AMZN", "MSFT", "NVDA", "DLTR", "VLO", "COST", "HOOD",
-    "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO", "TMO", "WDC"
+    "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO", "TMO", "WDC", "ORCL"
 ]
 
-# Active Watchlist
-WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ORCL", "CSCO", "VRT", "AVGO"]
+# Active Watchlist (ANET backfilled, ORCL graduated to Holdings)
+WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 
 # Broad-Market Scanner (S&P 500 & Nasdaq leaders)
 BROAD_MARKET = [
     "AMD", "INTC", "QCOM", "ARM", "SMCI", "PANW", "CRWD", "NOW",
-    "CRM", "SNOW", "DELL", "HPE", "ANET", "UBER", "ABNB",
+    "CRM", "SNOW", "DELL", "HPE", "UBER", "ABNB",
     "NFLX", "DIS", "TSLA", "LLY", "UNH", "JNJ", "ABBV", "CAT",
     "DE", "GE", "HON", "RTX", "NOC", "GD", "BA", "JPM", "GS", "MS"
 ]
@@ -181,7 +181,6 @@ def get_catalysts():
     seen = set()
     scan_universe = HOLDINGS + WATCHLIST + BROAD_MARKET
     
-    # Pass 1: Parse and categorize metrics across the universe
     for tkr in scan_universe:
         if "-USD" in tkr or tkr in seen:
             continue
@@ -208,9 +207,7 @@ def get_catalysts():
                 day_pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
                 analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
                 
-                # Check for Sell / Strong Sell triggers in existing portfolio
                 is_sell_rating = rec in ["sell", "strong_sell", "underperform"]
-                # Downside target or negative technical drift
                 is_deteriorating = upside <= -5.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
                 
                 if tkr in HOLDINGS and (is_sell_rating or is_deteriorating):
@@ -230,7 +227,6 @@ def get_catalysts():
                     })
                     continue
                 
-                # Identify valid candidates for Buy / Replacement
                 if rec in ["buy", "strong_buy"] and upside >= 18.0:
                     candidates_pool.append({
                         "ticker": tkr,
@@ -248,11 +244,9 @@ def get_catalysts():
         except Exception:
             pass
 
-    # Sort candidates by highest analyst upside
     candidates_pool.sort(key=lambda x: x["upside"], reverse=True)
     best_replacement = candidates_pool[0] if candidates_pool else None
     
-    # Attach top replacement ticker to any Sell triggers
     for s in signals:
         if s.get("is_sell") and best_replacement:
             rep_type = "Holding" if best_replacement["in_holdings"] else "New"
@@ -260,7 +254,6 @@ def get_catalysts():
             s["replacement_url"] = best_replacement["url"]
             s["replacement_text"] = f"Rotate capital into {best_replacement['ticker']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
 
-    # If no sell triggers fired, keep active Buy More and Breaking Out catalyst signals
     if not signals:
         for c in candidates_pool[:4]:
             if c["in_holdings"] and c["pullback"] >= 5.0:
