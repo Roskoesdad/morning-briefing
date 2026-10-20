@@ -165,17 +165,17 @@ DEFAULT_JS = """function toggleWeatherDetail(idx){
   }
 }
 
-function openReasonsModal(ticker, type, consensus, price, target, upside, reasonsJson){
+function openReasonsModal(name, type, price, reasonsJson){
   const overlay = document.getElementById('reasons-modal-overlay');
   if(!overlay) return;
-  document.getElementById('modal-title').innerText = ticker + ' (' + type + ') Analysis';
-  document.getElementById('modal-metrics').innerText = 'Consensus: ' + consensus + ' | Price: ' + price;
+  document.getElementById('modal-title').innerText = name + ' (' + type + ') Analysis';
+  document.getElementById('modal-metrics').innerText = 'Price: ' + price;
   
   let reasons = [];
   try {
     reasons = JSON.parse(decodeURIComponent(reasonsJson));
   } catch(e) {
-    reasons = ["Valuation target compression.", "Capital rotation into secular growth opportunities.", "Margin headwind or technical momentum exhaustion."];
+    reasons = ["Valuation multiple compression.", "Capital rotation into secular growth opportunities.", "Margin headwind or momentum exhaustion."];
   }
   
   const list = document.getElementById('modal-reasons-list');
@@ -346,7 +346,7 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
     except Exception:
         pass
     return [
-        f"Valuation Target Inversion: Current market price (${current_price:.2f}) leaves limited upside against the 12-month mean target.",
+        f"Valuation Cap: Current market price (${current_price:.2f}) leaves limited upside against the 12-month mean target.",
         f"Sector Rebalancing: Peak multiple expansion for {company_name} creates potential for capital rotation into discounted opportunities.",
         "Capital Efficiency: Reallocating proceeds into higher upside holdings offers improved risk-adjusted growth."
     ]
@@ -466,8 +466,6 @@ def get_catalysts():
                         "upside_num": upside,
                         "vol_ratio": f"{upside:+.0f}% Target",
                         "pct": f"${price:.2f}",
-                        "consensus": rec.upper().replace('_', ' ') if is_official_sell else "TARGET INVERSION",
-                        "target_price": f"${target:.2f}",
                         "current_price": f"${price:.2f}",
                         "analysts": num_analysts,
                         "url": analysis_url,
@@ -516,8 +514,6 @@ def get_catalysts():
                     "upside_num": c["upside"],
                     "vol_ratio": f"+{c['upside']:.0f}% Up",
                     "pct": f"${c['price']:.2f}",
-                    "consensus": c["rec"].upper().replace('_', ' '),
-                    "target_price": f"${c['target']:.2f}",
                     "current_price": f"${c['price']:.2f}",
                     "analysts": c["analysts"],
                     "url": c["url"],
@@ -532,8 +528,6 @@ def get_catalysts():
                     "upside_num": c["upside"],
                     "vol_ratio": f"+{c['upside']:.0f}% Up",
                     "pct": f"${c['price']:.2f}",
-                    "consensus": c["rec"].upper().replace('_', ' '),
-                    "target_price": f"${c['target']:.2f}",
                     "current_price": f"${c['price']:.2f}",
                     "analysts": c["analysts"],
                     "url": c["url"],
@@ -639,19 +633,20 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
    - Card 4 (Today's Gain/Loss): Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
 
 6. CATALYST RADAR BANNER:
-   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border: 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
+   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
    - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background: #ef4444, color: #ffffff, font-weight: 700, padding 6px 12px, border-radius 6px, font-size: 13px, margin-right: 20px; flex-shrink: 0).
    - CONTENT of banner:
      - For EACH item in 'catalysts':
        - If item.is_sell is True:
-         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> item.consensus at item.current_price <button onclick="openReasonsModal('item.name', 'item.type', 'item.consensus', 'item.current_price', 'item.target_price', 'item.vol_ratio', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
+         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> at item.current_price <button onclick="openReasonsModal('item.name', 'item.type', 'item.current_price', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
        - Otherwise (BUY MORE or BREAKING OUT):
-         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> item.consensus at item.current_price <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
-   - CRITICAL REQUIREMENT: DO NOT render target price or spread in parenthesis anywhere on the banner pills (DO NOT render things like '(Target $328.35, -3% Target)').
-   - Always use full company names (e.g. 'Apple' instead of 'AAPL', 'Valero Energy' instead of 'VLO', 'Oracle' instead of 'ORCL').
-   - DO NOT render 'ROTATE CAPITAL' anywhere. Use strictly 'SELL' or 'STRONG SELL'.
-   - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'.
-   - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
+         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> at item.current_price <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
+   - CRITICAL TEXT RESTRICTIONS:
+     - DO NOT render 'TARGET INVERSION' anywhere on the page or modal.
+     - DO NOT render target prices or percentages in parentheses (e.g. no '(Target $328.35, -3% Target)').
+     - DO NOT render 'ROTATE CAPITAL'. Use strictly 'SELL' or 'STRONG SELL'[cite: 6].
+     - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'[cite: 6].
+     - Always display full company names (e.g. 'Apple' instead of 'AAPL', 'Valero Energy' instead of 'VLO', 'Oracle' instead of 'ORCL').
    - If 'catalysts' is empty, render nothing at all.
 
 7. THREE-COLUMN TOP LEVEL LAYOUT:
