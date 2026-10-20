@@ -37,27 +37,27 @@ PORTFOLIO_CONFIG = {
         "XRP-USD": 47.055,
     },
     "retirement": {
-        "as_of": "Oct 19, 2026",
+        "as_of": "Oct 21, 2026",
         "combined_balance": 36087.69,
         "total_cost_basis": 30115.61,
         "total_unrealized_gain": 5972.08,
         "total_unrealized_gain_pct": 19.83,
-        "ytd_contributions": 11250.00,
+        "ytd_contributions": 11550.00,
         "ytd_roi": "+8.89%",
         "plans": {
             "403b": {
-                "name": "UC 403(B) PLAN (56016)",
+                "name": "UC 403(B) PLAN (Pre-Tax)",
                 "fund": "UC PATHWAY 2040",
                 "balance": 20654.70,
                 "cost_basis": 16953.11,
                 "unrealized_gain": 3701.59,
                 "unrealized_pct": 21.83,
                 "ytd_return": "+8.89%",
-                "ytd_contrib": 5700.00,
+                "ytd_contrib": 6000.00,
                 "per_paycheck": 300.00
             },
             "457b": {
-                "name": "UC 457(B) PLAN (65270)",
+                "name": "UC 457(B) PLAN (Roth After-Tax)",
                 "fund": "UC PATHWAY 2040",
                 "balance": 15432.99,
                 "cost_basis": 13162.50,
@@ -347,7 +347,7 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
         pass
     return [
         f"Valuation Cap: Current market price (${current_price:.2f}) leaves limited upside against the 12-month mean target.",
-        f"Sector Rebalancing: Peak multiple expansion for {company_name} creates potential for capital rotation into discounted opportunities.",
+        f"Sector Rebalancing: Multiple expansion for {company_name} creates potential for capital rotation into discounted opportunities.",
         "Capital Efficiency: Reallocating proceeds into higher upside holdings offers improved risk-adjusted growth."
     ]
 
@@ -641,12 +641,12 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
          Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> at item.current_price <button onclick="openReasonsModal('item.name', 'item.type', 'item.current_price', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
        - Otherwise (BUY MORE or BREAKING OUT):
          Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> at item.current_price <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
-   - CRITICAL TEXT RESTRICTIONS:
-     - DO NOT render 'TARGET INVERSION' anywhere on the page or modal.
-     - DO NOT render target prices or percentages in parentheses (e.g. no '(Target $328.35, -3% Target)').
+   - CRITICAL RESTRICTIONS:
+     - DO NOT render 'TARGET INVERSION' anywhere.
+     - DO NOT render target prices or spreads in parentheses (no '(Target $328.35, -3% Target)').
      - DO NOT render 'ROTATE CAPITAL'. Use strictly 'SELL' or 'STRONG SELL'[cite: 6].
      - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'[cite: 6].
-     - Always display full company names (e.g. 'Apple' instead of 'AAPL', 'Valero Energy' instead of 'VLO', 'Oracle' instead of 'ORCL').
+     - Always use full company names (e.g., 'Apple', 'Valero Energy', 'Oracle')[cite: 7].
    - If 'catalysts' is empty, render nothing at all.
 
 7. THREE-COLUMN TOP LEVEL LAYOUT:
@@ -655,10 +655,10 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
    - RIGHT (350px width):
      - Top card: 'Institutional Retirement Tracker' with clean white background, border-radius 12px, border 1px solid #e2e8f0, padding 16px, margin-bottom 16px. Inside render:
        - Header: <div style='font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;'><span>🏛️ UC Retirement Plans</span><span style='font-size:11px;font-weight:600;color:#64748b;'>As of {summary['retirement_as_of']}</span></div>
-       - 403(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 403(B) (56016)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_403b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div></div></div>
-       - 457(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 457(B) (65270)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_457b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div></div></div>
+       - 403(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 403(B) (Pre-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_403b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div></div></div>
+       - 457(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 457(B) (Roth After-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040 (100%)</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_457b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div></div></div>
        - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>YTD Payroll Saved:</strong> {summary['retirement_ytd_contrib']}</span><span style='font-weight:700;color:#0284c7;'>YTD ROI: {summary['retirement_ytd_roi']}</span></div>
-     - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show full company name (alongside ticker if desired), price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
+     - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show full company name, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
 
 7. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
 8. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
