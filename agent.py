@@ -12,7 +12,7 @@ HOLDINGS = [
     "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO", "TMO", "WDC"
 ]
 
-# Watchlist (ORCL added, WDC promoted to Holdings)
+# Active Watchlist (ORCL added, WDC graduated to Holdings)
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ORCL", "CSCO", "VRT", "AVGO"]
 
 # Broad-Market Scanner (S&P 500 & Nasdaq leaders)
@@ -200,29 +200,38 @@ def get_catalysts():
                 upside = ((target - price) / price) * 100.0
                 pullback = (((high_52 - price) / high_52) * 100.0) if high_52 else 0.0
                 
-                # Active timing: volume surge or intraday price expansion
                 avg_v = float(h["Volume"].iloc[:-1].mean())
                 tod_v = float(h["Volume"].iloc[-1])
                 vr = (tod_v / avg_v) if avg_v > 0 else 1.0
                 day_pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
                 
-                # Rule: Wall St Buy/Strong Buy + >= 20% upside + pullback + active entry volume/momentum
-                has_fundamental_value = rec in ["buy", "strong_buy"] and upside >= 20.0 and pullback >= 5.0
-                has_active_catalyst = (vr >= 1.35 and day_pct > 0) or day_pct >= 2.0
+                analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
                 
-                if has_fundamental_value and has_active_catalyst:
-                    if tkr in HOLDINGS:
-                        grp = "Current Portfolio"
-                    elif tkr in WATCHLIST:
-                        grp = "Active Watchlist"
-                    else:
-                        grp = "Broad Market Opportunity"
-                    
-                    analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
+                # TRIGGER A: Current Portfolio Holding -> "Scale-In (Buy More)"
+                # Requirements: Buy/Strong Buy, >=18% upside, healthy pullback off 52-week peak
+                if tkr in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 18.0 and pullback >= 5.0:
+                    signals.append({
+                        "ticker": tkr,
+                        "group": "Current Holding",
+                        "type": "Scale-In (Buy More)",
+                        "upside_num": upside,
+                        "vol_ratio": f"+{upside:.0f}% Up",
+                        "pct": f"${price:.2f}",
+                        "consensus": rec.upper().replace('_', ' '),
+                        "target_price": f"${target:.2f}",
+                        "current_price": f"${price:.2f}",
+                        "analysts": num_analysts,
+                        "url": analysis_url
+                    })
+                
+                # TRIGGER B: Non-Portfolio Stock -> "New Position Breakout"
+                # Requirements: Buy/Strong Buy, >=20% upside, institutional volume surge (>=1.35x) or strong day move (>=2.0%)
+                elif tkr not in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 20.0 and ((vr >= 1.35 and day_pct > 0) or day_pct >= 2.0):
+                    grp = "Active Watchlist" if tkr in WATCHLIST else "Broad Market Opportunity"
                     signals.append({
                         "ticker": tkr,
                         "group": grp,
-                        "type": "Expert Buy Window",
+                        "type": "New Position Breakout",
                         "upside_num": upside,
                         "vol_ratio": f"+{upside:.0f}% Up",
                         "pct": f"${price:.2f}",
@@ -304,7 +313,7 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 4. CATALYST RADAR BANNER:
    - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content space-between, border-radius 14px).
    - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background #ef4444, color #ffffff, font-weight 700, padding 6px 12px, border-radius 6px, font-size 13px, margin-right 16px).
-   - CENTER/CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <strong>item.ticker</strong>: Consensus item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>.
+   - CENTER/CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <strong>[item.type] item.ticker</strong>: Consensus item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>.
    - RIGHT SIDE of banner: Tag 'HIGH CONVICTION SETUP' (color #b91c1c, font-weight 700, font-size 12px, letter-spacing 0.5px).
    - If 'catalysts' is empty, render nothing at all.
 5. THREE-COLUMN TOP LEVEL LAYOUT:
