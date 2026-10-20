@@ -261,7 +261,7 @@ def fetch_fox5():
 
 def generate_sell_reasons(ticker, current_price, target_price, upside, rec):
     try:
-        prompt = f"""Provide exactly 3 concise, objective institutional reasons why an investor holding {ticker} would consider trimming, selling, or rotating out at current levels.
+        prompt = f"""Provide exactly 3 concise, objective institutional reasons why an investor holding {ticker} would consider selling or rotating out at current levels.
 Current Price: ${current_price:.2f}, Target Price: ${target_price:.2f}, Analyst Upside: {upside:.1f}%, Consensus: {rec}.
 Focus on fundamentals (valuation multiple, margin compression, sector rotation, regulatory/macro risks).
 Output ONLY a JSON array containing exactly 3 strings without markdown."""
@@ -280,8 +280,8 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
         pass
     return [
         f"Valuation Target Inversion: Current price (${current_price:.2f}) leaves limited upside against the 12-month mean target (${target_price:.2f}).",
-        "Sector Margin Compression: Cyclical refining margins (crack spreads) face normalization risks relative to peak levels.",
-        "Capital Rotation Efficiency: Reallocating proceeds into higher secular upside holdings offers improved risk-adjusted growth."
+        "Sector Margin Compression: Cyclical refining or hardware margins face normalization risks relative to peak levels.",
+        "Capital Reallocation: Reallocating proceeds into higher upside holdings offers improved risk-adjusted growth."
     ]
 
 def calculate_portfolio_summary():
@@ -383,11 +383,10 @@ def get_catalysts():
                 analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
                 
                 is_official_sell = rec in ["sell", "strong_sell", "underperform"]
-                # Price target inversion or momentum breakdown
                 is_target_inversion = upside <= -3.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
                 
                 if tkr in HOLDINGS and (is_official_sell or is_target_inversion):
-                    action_badge = "STRONG SELL" if rec == "strong_sell" else ("SELL" if is_official_sell else "ROTATE CAPITAL")
+                    action_badge = "STRONG SELL" if rec == "strong_sell" else "SELL"
                     reasons_list = generate_sell_reasons(tkr, price, target, upside, rec)
                     reasons_encoded = urllib.parse.quote(json.dumps(reasons_list))
                     
@@ -433,7 +432,7 @@ def get_catalysts():
             rep_type = "Holding" if best_replacement["in_holdings"] else "New"
             s["replacement_ticker"] = best_replacement["ticker"]
             s["replacement_url"] = best_replacement["url"]
-            s["replacement_text"] = f"Rotate capital into {best_replacement['ticker']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
+            s["replacement_text"] = f"{best_replacement['ticker']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
 
     if not signals:
         for c in candidates_pool[:4]:
@@ -541,7 +540,7 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
 
-4. MODAL DIALOG INJECTION (FOR 3 REASONS TO ROTATE/SELL):
+4. MODAL DIALOG INJECTION (FOR 3 REASONS TO SELL):
    - Immediately before closing </body>, include this hidden modal HTML structure:
      <div id="reasons-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px);">
        <div style="background:#ffffff;border-radius:14px;padding:24px;max-width:540px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);position:relative;border:1px solid #e2e8f0;">
@@ -571,9 +570,11 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
    - CONTENT of banner:
      - For EACH item in 'catalysts':
        - If item.is_sell is True:
-         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <button onclick="openReasonsModal('item.ticker', 'item.type', 'item.consensus', 'item.current_price', 'item.target_price', 'item.vol_ratio', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Replacement: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
+         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <button onclick="openReasonsModal('item.ticker', 'item.type', 'item.consensus', 'item.current_price', 'item.target_price', 'item.vol_ratio', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
        - Otherwise (BUY MORE or BREAKING OUT):
          Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
+   - DO NOT render 'ROTATE CAPITAL' anywhere. Use strictly 'SELL' or 'STRONG SELL'.
+   - DO NOT render the word 'Replacement:'. Use strictly '🔄 Buy:'.
    - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
    - If 'catalysts' is empty, render nothing at all.
 
@@ -588,8 +589,8 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
        - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>YTD Payroll Saved:</strong> {summary['retirement_ytd_contrib']}</span><span style='font-weight:700;color:#0284c7;'>YTD ROI: {summary['retirement_ytd_roi']}</span></div>
      - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show ticker, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
 
-8. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
-9. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
+7. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
+8. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
 
     models = get_candidate_models()
     resp = None
