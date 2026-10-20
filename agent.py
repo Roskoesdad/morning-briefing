@@ -5,14 +5,14 @@ from google import genai
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# 22 Active Assets (WDC integrated)
+# 22 Active Assets
 HOLDINGS = [
     "BTC-USD", "XRP-USD", "DOGE-USD", "SOL-USD", "BRK-B", "WMT",
     "AAPL", "AMZN", "MSFT", "NVDA", "DLTR", "VLO", "COST", "HOOD",
     "META", "GOOGL", "EQIX", "PLTR", "TSM", "VOO", "TMO", "WDC"
 ]
 
-# Active Watchlist (ORCL added, WDC graduated to Holdings)
+# Active Watchlist
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ORCL", "CSCO", "VRT", "AVGO"]
 
 # Broad-Market Scanner (S&P 500 & Nasdaq leaders)
@@ -177,9 +177,11 @@ def fetch_fox5():
 
 def get_catalysts():
     signals = []
+    candidates_pool = []
     seen = set()
     scan_universe = HOLDINGS + WATCHLIST + BROAD_MARKET
     
+    # Pass 1: Parse and categorize metrics across the universe
     for tkr in scan_universe:
         if "-USD" in tkr or tkr in seen:
             continue
@@ -204,44 +206,94 @@ def get_catalysts():
                 tod_v = float(h["Volume"].iloc[-1])
                 vr = (tod_v / avg_v) if avg_v > 0 else 1.0
                 day_pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
-                
                 analysis_url = f"https://finance.yahoo.com/quote/{tkr}/analysis"
                 
-                # TRIGGER A: Current Portfolio Holding -> "BUY MORE"
-                if tkr in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 18.0 and pullback >= 5.0:
+                # Check for Sell / Strong Sell triggers in existing portfolio
+                is_sell_rating = rec in ["sell", "strong_sell", "underperform"]
+                # Downside target or negative technical drift
+                is_deteriorating = upside <= -5.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
+                
+                if tkr in HOLDINGS and (is_sell_rating or is_deteriorating):
                     signals.append({
                         "ticker": tkr,
                         "group": "Current Holding",
-                        "type": "BUY MORE",
+                        "type": "SELL" if rec in ["sell", "underperform"] else "STRONG SELL",
                         "upside_num": upside,
-                        "vol_ratio": f"+{upside:.0f}% Up",
+                        "vol_ratio": f"{upside:+.0f}% Target",
                         "pct": f"${price:.2f}",
-                        "consensus": rec.upper().replace('_', ' '),
+                        "consensus": rec.upper().replace('_', ' ') if rec else "BEARISH DOWNTREND",
                         "target_price": f"${target:.2f}",
                         "current_price": f"${price:.2f}",
                         "analysts": num_analysts,
-                        "url": analysis_url
+                        "url": analysis_url,
+                        "is_sell": True
                     })
+                    continue
                 
-                # TRIGGER B: Non-Portfolio Stock -> "BREAKING OUT"
-                elif tkr not in HOLDINGS and rec in ["buy", "strong_buy"] and upside >= 20.0 and ((vr >= 1.35 and day_pct > 0) or day_pct >= 2.0):
-                    grp = "Active Watchlist" if tkr in WATCHLIST else "Broad Market Opportunity"
-                    signals.append({
+                # Identify valid candidates for Buy / Replacement
+                if rec in ["buy", "strong_buy"] and upside >= 18.0:
+                    candidates_pool.append({
                         "ticker": tkr,
-                        "group": grp,
-                        "type": "BREAKING OUT",
-                        "upside_num": upside,
-                        "vol_ratio": f"+{upside:.0f}% Up",
-                        "pct": f"${price:.2f}",
-                        "consensus": rec.upper().replace('_', ' '),
-                        "target_price": f"${target:.2f}",
-                        "current_price": f"${price:.2f}",
+                        "rec": rec,
+                        "upside": upside,
+                        "price": price,
+                        "target": target,
+                        "pullback": pullback,
+                        "vr": vr,
+                        "day_pct": day_pct,
                         "analysts": num_analysts,
-                        "url": analysis_url
+                        "url": analysis_url,
+                        "in_holdings": tkr in HOLDINGS
                     })
         except Exception:
             pass
-            
+
+    # Sort candidates by highest analyst upside
+    candidates_pool.sort(key=lambda x: x["upside"], reverse=True)
+    best_replacement = candidates_pool[0] if candidates_pool else None
+    
+    # Attach top replacement ticker to any Sell triggers
+    for s in signals:
+        if s.get("is_sell") and best_replacement:
+            rep_type = "Holding" if best_replacement["in_holdings"] else "New"
+            s["replacement_ticker"] = best_replacement["ticker"]
+            s["replacement_url"] = best_replacement["url"]
+            s["replacement_text"] = f"Rotate capital into {best_replacement['ticker']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
+
+    # If no sell triggers fired, keep active Buy More and Breaking Out catalyst signals
+    if not signals:
+        for c in candidates_pool[:4]:
+            if c["in_holdings"] and c["pullback"] >= 5.0:
+                signals.append({
+                    "ticker": c["ticker"],
+                    "group": "Current Holding",
+                    "type": "BUY MORE",
+                    "upside_num": c["upside"],
+                    "vol_ratio": f"+{c['upside']:.0f}% Up",
+                    "pct": f"${c['price']:.2f}",
+                    "consensus": c["rec"].upper().replace('_', ' '),
+                    "target_price": f"${c['target']:.2f}",
+                    "current_price": f"${c['price']:.2f}",
+                    "analysts": c["analysts"],
+                    "url": c["url"],
+                    "is_sell": False
+                })
+            elif not c["in_holdings"] and ((c["vr"] >= 1.35 and c["day_pct"] > 0) or c["day_pct"] >= 2.0):
+                signals.append({
+                    "ticker": c["ticker"],
+                    "group": "Active Watchlist" if c["ticker"] in WATCHLIST else "Broad Market Opportunity",
+                    "type": "BREAKING OUT",
+                    "upside_num": c["upside"],
+                    "vol_ratio": f"+{c['upside']:.0f}% Up",
+                    "pct": f"${c['price']:.2f}",
+                    "consensus": c["rec"].upper().replace('_', ' '),
+                    "target_price": f"${c['target']:.2f}",
+                    "current_price": f"${c['price']:.2f}",
+                    "analysts": c["analysts"],
+                    "url": c["url"],
+                    "is_sell": False
+                })
+                
     signals.sort(key=lambda x: x["upside_num"], reverse=True)
     return signals[:2]
 
@@ -311,7 +363,10 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 4. CATALYST RADAR BANNER:
    - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom 20px, border 3px solid #ef4444, background #fff5f5, animation pulse-alert 1.5s infinite, display flex, align-items center, justify-content flex-start, border-radius 14px).
    - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background #ef4444, color #ffffff, font-weight 700, padding 6px 12px, border-radius 6px, font-size 13px, margin-right 20px; flex-shrink: 0).
-   - CONTENT of banner: For EACH item in 'catalysts', render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'>. Inside the link, show: <span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span>. (CRITICAL: DO NOT output the word 'Consensus' anywhere).
+   - CONTENT of banner:
+     - For EACH item in 'catalysts':
+       - If item.type is 'SELL' or 'STRONG SELL': Render a distinct pill with red styling. Inside show: <span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <a href='item.url' target='_blank' rel='noopener noreferrer' style='text-decoration:none;color:#991b1b;font-weight:700;'>item.ticker: item.consensus at item.current_price ↗ View Why</a>. If 'replacement_ticker' is present, immediately follow with: <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Replacement: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span>.
+       - Otherwise (BUY MORE or BREAKING OUT): Render an individual, distinct clickable anchor tag <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.ticker:</strong> item.consensus at item.current_price (Target item.target_price, item.vol_ratio) <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>. (CRITICAL: DO NOT output the word 'Consensus' anywhere).
    - DO NOT render 'HIGH CONVICTION SETUP' text anywhere on the banner.
    - If 'catalysts' is empty, render nothing at all.
 5. THREE-COLUMN TOP LEVEL LAYOUT:
