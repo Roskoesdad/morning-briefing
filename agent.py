@@ -25,7 +25,7 @@ PORTFOLIO_CONFIG = {
         "PLTR": 1.00,
         "TMO": 0.108713,
         "TSM": 0.127575,
-        "VLO": 1.02,
+        "VLO": 1.02487,
         "VOO": 0.142004,
         "WDC": 0.140095,
         "WMT": 3.79,
@@ -196,6 +196,26 @@ function openReasonsModal(name, type, price, reasonsJson){
 function closeReasonsModal(){
   const overlay = document.getElementById('reasons-modal-overlay');
   if(overlay) overlay.style.display = 'none';
+}
+
+function toggleTabRow(){
+  const row = document.getElementById('kpi-tab-bar');
+  if(!row) return;
+  const isHidden = row.style.display === 'none' || row.style.display === '';
+  row.style.display = isHidden ? 'flex' : 'none';
+  if(!isHidden){
+    for(let i=1; i<=4; i++){
+      const c = document.getElementById('kpi-card-' + i);
+      if(c) c.style.display = 'none';
+    }
+  }
+}
+
+function toggleKpiCard(idx){
+  const card = document.getElementById('kpi-card-' + idx);
+  if(!card) return;
+  const isHidden = card.style.display === 'none' || card.style.display === '';
+  card.style.display = isHidden ? 'block' : 'none';
 }
 
 async function updateWeather(){
@@ -614,7 +634,7 @@ Data payload JSON:
 {json.dumps(payload)}
 
 MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
-1. NO TABS. Display all content in open, simultaneous side-by-side split panels.
+1. NO TABS FOR LOWER PANELS. Display news, sports, weather, and portfolios in open, simultaneous side-by-side split panels.
 2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
 
@@ -635,12 +655,30 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
        </div>
      </div>
 
-5. EXECUTIVE WEALTH & RETIREMENT HEADER (FULL WIDTH AT TOP):
-   - Directly below opening <body>, render a 4-card KPI row spanning full width (margin-bottom: 20px, display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px).
-   - Card 1 (Liquid Net Worth): Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Brokerage + Crypto + Full UC Benefits' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
-   - Card 2 (UC Retirement Combined): Label 'TOTAL UC RETIREMENT & PENSION' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['uc_total_balance']}' (font-size: 26px, font-weight: 800, color: #0284c7). Sub-text: 'UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})' (font-size: 13px, color: #0284c7, font-weight: 700, margin-top: 4px).
-   - Card 3 (Active Brokerage Trading): Label 'ACTIVE BROKERAGE EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['brokerage_equity']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
-   - Card 4 (Today's Gain/Loss): Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
+5. ON-DEMAND / HIDDEN EXECUTIVE WEALTH TOP HEADER:
+   - Directly below opening <body>, render the top wealth section completely hidden by default until clicked.
+   - TOP TRIGGER BAR: Render a compact container with a toggle button:
+     <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+       <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:flex;align-items:center;gap:8px;">
+         <span>💼 Executive Wealth Summary</span>
+         <span style="font-size:11px;color:#64748b;font-weight:500;">(Click to view tabs)</span>
+       </button>
+       <div id="kpi-tab-bar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+         <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
+         <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
+         <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
+         <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
+       </div>
+     </div>
+   - METRIC CARDS CONTAINER: Render a grid spanning full width (margin-bottom: 20px, display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px).
+   - Card 1 (id="kpi-card-1", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+     Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Brokerage + Crypto + Full UC Benefits' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
+   - Card 2 (id="kpi-card-2", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+     Label 'TOTAL UC RETIREMENT & PENSION' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['uc_total_balance']}' (font-size: 26px, font-weight: 800, color: #0284c7). Sub-text: 'UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})' (font-size: 13px, color: #0284c7, font-weight: 700, margin-top: 4px).
+   - Card 3 (id="kpi-card-3", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+     Label 'ACTIVE BROKERAGE EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['brokerage_equity']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
+   - Card 4 (id="kpi-card-4", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+     Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
 
 6. CATALYST RADAR BANNER:
    - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
@@ -653,10 +691,10 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
          Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> at item.current_price <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
    - CRITICAL RESTRICTIONS:
      - DO NOT render 'TARGET INVERSION' anywhere.
-     - DO NOT render target prices or spreads in parentheses (no '(Target $328.35, -3% Target)').
-     - DO NOT render 'ROTATE CAPITAL'. Use strictly 'SELL' or 'STRONG SELL'.
-     - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'.
-     - Always use full company names (e.g., 'Apple', 'Valero Energy', 'Oracle').
+     - DO NOT render target prices or spreads in parentheses (no '(Target $328.35, -3% Target)')[cite: 7].
+     - DO NOT render 'ROTATE CAPITAL'. Use strictly 'SELL' or 'STRONG SELL'[cite: 6].
+     - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'[cite: 6].
+     - Always use full company names (e.g., 'Apple', 'Valero Energy', 'Oracle')[cite: 7].
    - If 'catalysts' is empty, render nothing at all.
 
 7. THREE-COLUMN TOP LEVEL LAYOUT:
@@ -671,8 +709,8 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
        - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>Total Institutional:</strong> {summary['uc_total_balance']}</span><span style='font-weight:700;color:#0284c7;'>Health & Welf: {summary['ucrp_service']}</span></div>
      - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show full company name, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
 
-7. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
-8. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
+8. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
+9. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
 
     models = get_candidate_models()
     resp = None
