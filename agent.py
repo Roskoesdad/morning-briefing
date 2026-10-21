@@ -175,17 +175,16 @@ DEFAULT_JS = """function toggleWeatherDetail(idx){
   }
 }
 
-function openReasonsModal(name, type, price, reasonsJson){
+function openReasonsModal(name, actionType, reasonsJson){
   const overlay = document.getElementById('reasons-modal-overlay');
   if(!overlay) return;
-  document.getElementById('modal-title').innerText = name + ' (' + type + ') Analysis';
-  document.getElementById('modal-metrics').innerText = 'Price: ' + price;
+  document.getElementById('modal-title').innerText = name + ' (' + actionType + ') Analysis';
   
   let reasons = [];
   try {
     reasons = JSON.parse(decodeURIComponent(reasonsJson));
   } catch(e) {
-    reasons = ["Valuation multiple compression.", "Capital rotation into secular growth opportunities.", "Margin headwind or momentum exhaustion."];
+    reasons = ["Strategic valuation considerations.", "Sector rebalancing and capital efficiency.", "Growth upside and risk-reward profile."];
   }
   
   const list = document.getElementById('modal-reasons-list');
@@ -355,12 +354,12 @@ def fetch_fox5():
                     return out
     return out[:5]
 
-def generate_sell_reasons(ticker, current_price, target_price, upside, rec):
+def generate_reasons(ticker, action_type, price, target, upside, rec):
     company_name = COMPANY_NAMES.get(ticker, ticker)
     try:
-        prompt = f"""Provide exactly 3 concise, objective institutional reasons why an investor holding {company_name} ({ticker}) would consider selling or rotating out at current levels.
-Current Price: ${current_price:.2f}, Target Price: ${target_price:.2f}, Analyst Upside: {upside:.1f}%, Consensus: {rec}.
-Focus on fundamentals (valuation multiple, margin compression, sector rotation, regulatory/macro risks).
+        prompt = f"""Provide exactly 3 concise, objective institutional reasons why an investor would choose to {action_type.upper()} {company_name} ({ticker}) at current levels.
+Current Price: ${price:.2f}, Target Price: ${target:.2f}, Upside: {upside:.1f}%, Consensus: {rec}.
+Focus on fundamentals (valuation multiple, margin trajectory, secular growth drivers, sector rotation, capital efficiency).
 Output ONLY a JSON array containing exactly 3 strings without markdown."""
         models = get_candidate_models()
         for m in models:
@@ -375,8 +374,14 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
                 continue
     except Exception:
         pass
+    if action_type.lower() == "buy":
+        return [
+            f"Attractive Upside Spread: Consensus price target offers superior projected return (+{upside:.0f}%) over the next 12 months.",
+            f"Secular Growth Tailwind: Expanding enterprise demand and operating leverage support multiple expansion for {company_name}.",
+            "Favorable Risk/Reward: High institutional conviction provides defensive support against broader market volatility."
+        ]
     return [
-        f"Valuation Cap: Current market price (${current_price:.2f}) leaves limited upside against the 12-month mean target.",
+        f"Valuation Cap: Current market price (${price:.2f}) leaves limited upside against the 12-month mean target.",
         f"Sector Rebalancing: Multiple expansion for {company_name} creates potential for capital rotation into discounted opportunities.",
         "Capital Efficiency: Reallocating proceeds into higher upside holdings offers improved risk-adjusted growth."
     ]
@@ -485,7 +490,7 @@ def get_catalysts():
                 
                 if tkr in HOLDINGS and (is_official_sell or is_target_inversion):
                     action_badge = "STRONG SELL" if rec == "strong_sell" else "SELL"
-                    reasons_list = generate_sell_reasons(tkr, price, target, upside, rec)
+                    reasons_list = generate_reasons(tkr, "SELL", price, target, upside, rec)
                     reasons_encoded = urllib.parse.quote(json.dumps(reasons_list))
                     
                     signals.append({
@@ -532,6 +537,8 @@ def get_catalysts():
             s["replacement_name"] = best_replacement["name"]
             s["replacement_url"] = best_replacement["url"]
             s["replacement_text"] = f"{best_replacement['name']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
+            buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
+            s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
 
     if not signals:
         for c in candidates_pool[:4]:
@@ -638,7 +645,7 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
 2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
 3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
 
-4. MODAL DIALOG INJECTION (FOR 3 REASONS TO SELL):
+4. MODAL DIALOG INJECTION (FOR 3 REASONS WHY):
    - Immediately before closing </body>, include this hidden modal HTML structure:
      <div id="reasons-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px);">
        <div style="background:#ffffff;border-radius:14px;padding:24px;max-width:540px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);position:relative;border:1px solid #e2e8f0;">
@@ -646,7 +653,6 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
            <h3 id="modal-title" style="margin:0;font-size:18px;color:#0f172a;font-weight:800;"></h3>
            <button onclick="closeReasonsModal()" style="background:transparent;border:none;font-size:20px;cursor:pointer;color:#64748b;font-weight:700;">✕</button>
          </div>
-         <div id="modal-metrics" style="font-size:12px;color:#64748b;margin-bottom:14px;font-weight:600;background:#f8fafc;padding:8px 12px;border-radius:6px;"></div>
          <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">💡 Key Actionable Reasons:</div>
          <ul id="modal-reasons-list" style="padding-left:20px;margin-top:0;margin-bottom:18px;font-size:13px;"></ul>
          <div style="display:flex;justify-content:flex-end;">
@@ -655,22 +661,22 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
        </div>
      </div>
 
-5. ON-DEMAND / HIDDEN EXECUTIVE WEALTH TOP HEADER:
-   - Directly below opening <body>, render the top wealth section completely hidden by default until clicked.
-   - TOP TRIGGER BAR: Render a compact container with a toggle button:
-     <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
-       <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:flex;align-items:center;gap:8px;">
+5. CENTERED ON-DEMAND EXECUTIVE WEALTH HEADER:
+   - Directly below opening <body>, render the top wealth trigger bar CENTERED on the page (display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin: 10px auto 20px auto;).
+   - TRIGGER CONTAINER:
+     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;">
+       <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:inline-flex;align-items:center;gap:8px;">
          <span>💼 Executive Wealth Summary</span>
          <span style="font-size:11px;color:#64748b;font-weight:500;">(Click to view tabs)</span>
        </button>
-       <div id="kpi-tab-bar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
-         <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
-         <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
-         <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
-         <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
+       <div id="kpi-tab-bar" style="display:none;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
+         <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
+         <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
+         <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
+         <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
        </div>
      </div>
-   - METRIC CARDS CONTAINER: Render a grid spanning full width (margin-bottom: 20px, display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px).
+   - METRIC CARDS CONTAINER: Render a grid spanning full width (margin-top: 14px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; width: 100%;).
    - Card 1 (id="kpi-card-1", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
      Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Brokerage + Crypto + Full UC Benefits' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
    - Card 2 (id="kpi-card-2", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
@@ -680,21 +686,21 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
    - Card 4 (id="kpi-card-4", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
      Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
 
-6. CATALYST RADAR BANNER:
+6. CATALYST RADAR BANNER (STREAMLINED FORMATTING):
    - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
    - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background: #ef4444, color: #ffffff, font-weight: 700, padding 6px 12px, border-radius 6px, font-size: 13px, margin-right: 20px; flex-shrink: 0).
    - CONTENT of banner:
      - For EACH item in 'catalysts':
        - If item.is_sell is True:
-         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> at item.current_price <button onclick="openReasonsModal('item.name', 'item.type', 'item.current_price', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a></span></div>.
+         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name</strong> <button onclick="openReasonsModal('item.name', 'SELL', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ 3 reasons why</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a> <button onclick="openReasonsModal('item.replacement_name', 'BUY', 'item.replacement_reasons_encoded')" style='background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ 3 reasons why</button></span></div>.
        - Otherwise (BUY MORE or BREAKING OUT):
-         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name:</strong> at item.current_price <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
-   - CRITICAL RESTRICTIONS:
-     - DO NOT render 'TARGET INVERSION' anywhere.
-     - DO NOT render target prices or spreads in parentheses (no '(Target $328.35, -3% Target)')[cite: 7].
-     - DO NOT render 'ROTATE CAPITAL'. Use strictly 'SELL' or 'STRONG SELL'[cite: 6].
-     - DO NOT render 'Replacement:'. Use strictly '🔄 Buy:'[cite: 6].
-     - Always use full company names (e.g., 'Apple', 'Valero Energy', 'Oracle')[cite: 7].
+         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name</strong> <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
+   - CRITICAL TEXT REQUIREMENTS:
+     - STRICTLY REMOVE all price references like ':at $339.50' or ':at x dollar amount'. Do not output any dollar signs or colon prices in the sell portion.
+     - The sell button text MUST be '↗ 3 reasons why' (NOT 'View 3 Reasons').
+     - The buy replacement section MUST keep its current text format and add '↗ 3 reasons why' opening the buy reasons modal.
+     - DO NOT render 'TARGET INVERSION' or parenthetical target prices.
+     - Always use full company names (e.g. 'Apple', 'Valero Energy', 'Oracle').
    - If 'catalysts' is empty, render nothing at all.
 
 7. THREE-COLUMN TOP LEVEL LAYOUT:
