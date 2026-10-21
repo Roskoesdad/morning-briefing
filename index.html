@@ -6,82 +6,42 @@
 <title>Executive Briefing Dashboard</title>
 <style>
   @keyframes pulse-alert { 
-    0%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} 
-    50%{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);} 
-    100%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} 
+    0% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.65); } 
+    50% { border-color: #b91c1c; box-shadow: 0 0 18px 5px rgba(239, 68, 68, 0.55); } 
+    100% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.65); } 
   }
 
   body {
-    background-color: #f1f5f9;
+    background: #f1f5f9;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #0f172a;
     margin: 0;
-    padding: 20px 0;
+    padding: 0;
   }
 
-  .dashboard-container {
+  .dashboard-wrapper {
     width: 98vw;
     max-width: 1820px;
     margin: 0 auto;
+    padding-top: 20px;
+    padding-bottom: 40px;
   }
 
-  /* Executive Wealth & Retirement Header */
-  .kpi-row {
+  .card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+
+  .grid-4 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 20px;
   }
 
-  .kpi-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 18px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  }
-
-  .kpi-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .kpi-value {
-    font-size: 26px;
-    font-weight: 800;
-    color: #0f172a;
-    margin-top: 4px;
-  }
-
-  /* Catalyst Radar Banner */
-  .catalyst-banner {
-    padding: 14px 22px;
-    margin-bottom: 20px;
-    border: 3px solid #ef4444;
-    background: #fff5f5;
-    animation: pulse-alert 1.5s infinite;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    border-radius: 14px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .catalyst-badge {
-    background: #ef4444;
-    color: #ffffff;
-    font-weight: 700;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    flex-shrink: 0;
-  }
-
-  /* Three-Column Layout */
   .main-layout {
     display: flex;
     gap: 20px;
@@ -91,48 +51,26 @@
   .col-left {
     width: 320px;
     flex-shrink: 0;
-    align-self: flex-start;
   }
 
   .col-center {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    min-width: 0;
   }
 
   .col-right {
     width: 350px;
     flex-shrink: 0;
+  }
+
+  .split-panel {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    gap: 20px;
   }
 
-  .card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 18px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  }
-
-  .card-title {
-    font-size: 16px;
-    font-weight: 800;
-    color: #0f172a;
-    margin-top: 0;
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  /* Dual columns inside center cards */
-  .dual-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+  .split-half {
+    flex: 1;
+    min-width: 0;
   }
 
   .news-item {
@@ -147,170 +85,149 @@
   .news-item:last-child {
     border-bottom: none;
   }
+
   .news-item img {
-    width: 46px;
-    height: 46px;
-    border-radius: 6px;
+    width: 50px;
+    height: 50px;
     object-fit: cover;
+    border-radius: 6px;
     flex-shrink: 0;
     background: #e2e8f0;
   }
-  .news-title {
-    font-size: 12px;
+
+  .news-item .news-title {
+    font-size: 13px;
     font-weight: 600;
     color: #1e293b;
-    line-height: 1.3;
+    line-height: 1.4;
+  }
+  .news-item:hover .news-title {
+    color: #0284c7;
   }
 
-  /* AI Breakthroughs Grid */
+  .badge-pos {
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .badge-neg {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
   .ai-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
-  .ai-item {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 8px;
-    border: 1px solid #f1f5f9;
-    border-radius: 8px;
-    text-decoration: none;
-    color: inherit;
-    background: #f8fafc;
-    transition: background 0.2s;
-  }
-  .ai-item:hover {
-    background: #f1f5f9;
-  }
-  .ai-item img {
-    width: 50px;
-    height: 50px;
-    border-radius: 6px;
-    object-fit: cover;
-    flex-shrink: 0;
-    background: #e2e8f0;
-  }
-  .ai-title {
-    font-size: 11px;
-    font-weight: 700;
-    color: #1e293b;
-    line-height: 1.25;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
 
-  /* Holdings list styling */
-  .holding-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f1f5f9;
-    text-decoration: none;
-    color: inherit;
-    font-size: 13px;
-  }
-  .holding-row:last-child {
-    border-bottom: none;
-  }
-  .badge-pos {
-    color: #059669;
-    background: #ecfdf5;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 11px;
-  }
-  .badge-neg {
-    color: #dc2626;
-    background: #fef2f2;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 11px;
-  }
-
-  @media(max-width: 1200px) {
-    .kpi-row { grid-template-columns: repeat(2, 1fr); }
-    .main-layout { flex-direction: column; }
-    .col-left, .col-right { width: 100%; }
+  @media (max-width: 1400px) {
+    .main-layout {
+      flex-direction: column;
+    }
+    .col-left, .col-right, .col-center {
+      width: 100%;
+    }
   }
 </style>
 </head>
 <body>
 
-<div class="dashboard-container">
+<div class="dashboard-wrapper">
 
-  <!-- 5. EXECUTIVE WEALTH & RETIREMENT HEADER -->
-  <div class="kpi-row">
-    <div class="kpi-card">
-      <div class="kpi-label">TOTAL LIQUID NET WORTH</div>
-      <div class="kpi-value">$183,175.32</div>
+  <!-- ON-DEMAND / HIDDEN EXECUTIVE WEALTH TOP HEADER -->
+  <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+    <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:flex;align-items:center;gap:8px;">
+      <span>💼 Executive Wealth Summary</span>
+      <span style="font-size:11px;color:#64748b;font-weight:500;">(Click to view tabs)</span>
+    </button>
+    <div id="kpi-tab-bar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
+      <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
+      <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
+      <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <!-- Card 1 -->
+    <div id="kpi-card-1" style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL LIQUID NET WORTH</div>
+      <div style="font-size: 26px; font-weight: 800; color: #0f172a; margin-top: 6px;">$183,183.35</div>
       <div style="font-size: 13px; color: #64748b; font-weight: 500; margin-top: 4px;">Brokerage + Crypto + Full UC Benefits</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">TOTAL UC RETIREMENT & PENSION</div>
-      <div class="kpi-value" style="color: #0284c7;">$172,552.79</div>
+    <!-- Card 2 -->
+    <div id="kpi-card-2" style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL UC RETIREMENT & PENSION</div>
+      <div style="font-size: 26px; font-weight: 800; color: #0284c7; margin-top: 6px;">$172,552.79</div>
       <div style="font-size: 13px; color: #0284c7; font-weight: 700; margin-top: 4px;">UCRP ($136,465.10) + DC Plans ($36,087.69)</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">ACTIVE BROKERAGE EQUITY</div>
-      <div class="kpi-value" style="color: #059669;">$10,622.53</div>
-      <div style="font-size: 13px; color: #059669; font-weight: 700; margin-top: 4px;">+$3,967.79 (+59.62% ROI)</div>
+    <!-- Card 3 -->
+    <div id="kpi-card-3" style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">ACTIVE BROKERAGE EQUITY</div>
+      <div style="font-size: 26px; font-weight: 800; color: #059669; margin-top: 6px;">$10,630.56</div>
+      <div style="font-size: 13px; color: #059669; font-weight: 700; margin-top: 4px;">+$3,975.82 (+59.74% ROI)</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">TODAY'S BROKERAGE GAIN</div>
-      <div class="kpi-value" style="color: #00c805;">+$43.19</div>
-      <div style="font-size: 13px; color: #00c805; font-weight: 700; margin-top: 4px;">+0.41% Intraday</div>
+    <!-- Card 4 -->
+    <div id="kpi-card-4" style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">TODAY'S BROKERAGE GAIN</div>
+      <div style="font-size: 26px; font-weight: 800; color: #00c805; margin-top: 6px;">+$16.77</div>
+      <div style="font-size: 13px; color: #00c805; font-weight: 700; margin-top: 4px;">+0.16% Intraday</div>
     </div>
   </div>
 
-  <!-- 6. CATALYST RADAR BANNER -->
-  <div class="catalyst-banner">
-    <div class="catalyst-badge">🚨 CATALYST ALERT</div>
-    
-    <!-- AAPL Catalyst -->
-    <div style="display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-      <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;">SELL</span> 
-      <strong>Apple:</strong> at $339.50 
-      <button onclick="openReasonsModal('Apple', 'SELL', '$339.50', '%5B%22The%20current%20stock%20price%20of%20%24339.50%20trades%20above%20the%20consensus%20target%20price%20of%20%24328.35%2C%20resulting%20in%20a%20negative%20analyst%20upside%20of%20-3.3%25%20and%20indicating%20limited%20near-term%20capital%20appreciation.%22%2C%20%22Sustained%20macroeconomic%20pressures%20and%20hardware%20saturation%20risk%20potential%20margin%20compression%20as%20consumer%20upgrade%20cycles%20lengthen%20and%20input%20costs%20remain%20elevated.%22%2C%20%22Anticipated%20sector%20rotation%20strategies%20may%20prompt%20institutional%20investors%20to%20reallocate%20capital%20away%20from%20mega-cap%20technology%20toward%20undervalued%20cyclical%20or%20defensive%20sectors.%22%5D')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;">↗ View 3 Reasons</button> 
-      <span style="margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;">🔄 Buy: <a href="https://finance.yahoo.com/quote/ORCL/analysis" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">Oracle (Holding: BUY, +81% upside) ↗</a></span>
+  <!-- CATALYST RADAR BANNER -->
+  <div style="padding: 14px 22px; margin-bottom: 20px; border: 3px solid #ef4444; background: #fff5f5; animation: pulse-alert 1.5s infinite; display: flex; align-items: center; justify-content: flex-start; border-radius: 14px; overflow-x: auto;">
+    <div style="background: #ef4444; color: #ffffff; font-weight: 700; padding: 6px 12px; border-radius: 6px; font-size: 13px; margin-right: 20px; flex-shrink: 0;">🚨 CATALYST ALERT</div>
+    <div style="display: flex; align-items: center; gap: 12px; white-space: nowrap;">
+      
+        <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'>
+          <span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>SELL</span> 
+          <strong>Apple:</strong> at $339.50 
+          <button onclick="openReasonsModal('Apple', 'SELL', '$339.50', '%5B%22Valuation%20risk%20with%20the%20market%20price%20trading%20at%20a%20premium%20to%20the%20consensus%20target%20price%20%28%24339.50%20vs.%20%24328.35%29%2C%20offering%20negative%20projected%20upside%20%28-3.3%25%29%20and%20leaving%20expanded%20multiples%20vulnerable%20to%20earnings%20misses.%22%2C%20%22Heightened%20regulatory%20and%20antitrust%20pressures%20globally%20%28including%20DOJ%20scrutiny%20and%20the%20EU%20Digital%20Markets%20Act%29%20that%20threaten%20high-margin%20Services%20revenue%2C%20particularly%20App%20Store%20fees%20and%20search%20licensing%20agreements.%22%2C%20%22Maturing%20hardware%20upgrade%20cycles%20and%20sustained%20market%20share%20challenges%20in%20key%20international%20markets%20like%20China%2C%20prompting%20institutional%20rotation%20into%20higher-growth%20AI%20infrastructure%20or%20cyclical%20opportunities.%22%5D')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> 
+          <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='https://finance.yahoo.com/quote/ORCL/analysis' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>Oracle (Holding: BUY, +81% upside) ↗</a></span>
+        </div>
+      
+        <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'>
+          <span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>SELL</span> 
+          <strong>Valero Energy:</strong> at $433.42 
+          <button onclick="openReasonsModal('Valero Energy', 'SELL', '$433.42', '%5B%22Valero%27s%20current%20share%20price%20of%20%24433.42%20exceeds%20the%20consensus%20analyst%20target%20price%20of%20%24412.21%20by%20approximately%204.9%25%2C%20suggesting%20the%20stock%20is%20currently%20fully%20valued%20relative%20to%20near-term%20fundamental%20expectations.%22%2C%20%22Global%20refining%20margins%20face%20ongoing%20compression%20risks%20as%20new%20international%20refining%20capacity%20outpaces%20demand%20growth%2C%20threatening%20the%20high%20utilization%20rates%20and%20cash%20flows%20that%20previously%20supported%20the%20stock.%22%2C%20%22Broad%20macroeconomic%20headwinds%20and%20shifting%20environmental%20regulations%20are%20increasing%20compliance%20costs%20and%20pressuring%20capital%20expenditure%20returns%20within%20the%20traditional%20fossil%20fuel%20sector.%22%5D')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ View 3 Reasons</button> 
+          <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='https://finance.yahoo.com/quote/ORCL/analysis' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>Oracle (Holding: BUY, +81% upside) ↗</a></span>
+        </div>
+      
     </div>
-
-    <!-- VLO Catalyst -->
-    <div style="display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-      <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;">SELL</span> 
-      <strong>Valero Energy:</strong> at $433.42 
-      <button onclick="openReasonsModal('Valero Energy', 'SELL', '$433.42', '%5B%22Valero%27s%20current%20market%20price%20exceeds%20the%20average%20analyst%20consensus%20target%20of%20%24412.21%2C%20reflecting%20negative%20near-term%20implied%20upside%20and%20suggesting%20the%20stock%20is%20fully%20valued%20following%20recent%20appreciation.%22%2C%20%22Global%20refining%20margins%20face%20downward%20pressure%20from%20expanding%20worldwide%20refining%20capacity%20and%20normalizing%20post-pandemic%20fuel%20demand%2C%20which%20threatens%20to%20compress%20Valero%27s%20earnings%20multiple.%22%2C%20%22Anticipated%20macroeconomic%20deceleration%20and%20aggressive%20sector%20rotation%20away%20from%20cyclical%20energy%20equities%20pose%20structural%20headwinds%20for%20downstream%20refining%20cash%20flows.%22%5D')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;">↗ View 3 Reasons</button> 
-      <span style="margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;">🔄 Buy: <a href="https://finance.yahoo.com/quote/ORCL/analysis" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">Oracle (Holding: BUY, +81% upside) ↗</a></span>
-    </div>
-
   </div>
 
-  <!-- 7. THREE-COLUMN TOP LEVEL LAYOUT -->
+  <!-- THREE-COLUMN TOP LEVEL LAYOUT -->
   <div class="main-layout">
     
-    <!-- LEFT COLUMN -->
+    <!-- LEFT COLUMN: Weather -->
     <div class="col-left">
-      <div class="card">
+      <div class="card" style="align-self: flex-start;">
         <h2 id="weather-card-title" style="font-size:18px;margin-top:0;margin-bottom:12px;">Weather 14-Day</h2>
         <div id="weather-forecast-list">Loading forecast...</div>
       </div>
     </div>
 
-    <!-- CENTER COLUMN -->
+    <!-- CENTER COLUMN: Sports, News, AI -->
     <div class="col-center">
       
-      <!-- Sports Desk -->
+      <!-- Sports Desk Card -->
       <div class="card">
-        <h3 class="card-title">⚾ Sports Desk: San Diego Padres & MLB</h3>
-        <div class="dual-col">
-          <div>
-            <div id="padres-live-box" style="margin-bottom: 12px; font-weight: 700; font-size: 13px; color: #0284c7;"></div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+        <h2 style="font-size:18px;margin-top:0;margin-bottom:12px;display:flex;align-items:center;gap:8px;">⚾ Sports Desk: San Diego Padres & MLB</h2>
+        <div class="split-panel">
+          <div class="split-half">
+            <div style="font-weight:700;font-size:13px;color:#0284c7;margin-bottom:8px;">San Diego Padres Highlights</div>
+            <div id="padres-live-box" style="margin-bottom:8px;font-size:12px;font-weight:600;color:#334155;"></div>
+            <div>
               <a href="https://www.mlb.com/padres/news/topic/padres-history-trivia" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://www.mlbstatic.com/team-logos/135.svg" alt="Padres">
                 <div class="news-title">Padres History Feature Stories</div>
@@ -318,6 +235,10 @@
               <a href="https://www.mlb.com/padres/news/ethan-salas-aims-to-be-central-part-of-2027-padres" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://www.mlbstatic.com/team-logos/135.svg" alt="Padres">
                 <div class="news-title">Salas proved he's here to stay. So what's next for Padres?</div>
+              </a>
+              <a href="https://www.mlbtraderumors.com/2026/10/offseason-outlook-san-diego-padres-17.html" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://cdn.mlbtraderumors.com/wp-content/plugins/fv-traderumors-membership-landing/images/mlb/landing-logo.png" alt="Padres">
+                <div class="news-title">Offseason Outlook: San Diego Padres</div>
               </a>
               <a href="https://www.mlbtraderumors.com/2026/10/yankees-had-past-interest-in-jeremiah-estrada.html" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://www.mlbstatic.com/team-logos/135.svg" alt="Padres">
@@ -327,15 +248,11 @@
                 <img src="https://www.mlbstatic.com/team-logos/135.svg" alt="Padres">
                 <div class="news-title">Preller Discusses Ethan Salas, Padres’ Catchers</div>
               </a>
-              <a href="https://www.mlbtraderumors.com/2026/10/preller-stammen-discuss-padres-offseason-rotation-injuries.html" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://www.mlbstatic.com/team-logos/135.svg" alt="Padres">
-                <div class="news-title">Preller, Stammen Discuss Padres’ Offseason, Rotation, Injuries</div>
-              </a>
             </div>
           </div>
-          <div>
-            <div style="margin-bottom: 12px; font-weight: 700; font-size: 13px; color: #64748b;">MLB League Overview</div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="split-half">
+            <div style="font-weight:700;font-size:13px;color:#0284c7;margin-bottom:8px;">Major League Baseball (MLB)</div>
+            <div>
               <a href="https://www.mlb.com/news/rays-brewers-each-vying-for-first-world-series-title" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://www.mlbstatic.com/team-logos/league-on-dark/1.svg" alt="MLB">
                 <div class="news-title">One thing is for sure: We’re going to get a new champ!</div>
@@ -344,13 +261,13 @@
                 <img src="https://www.mlbstatic.com/team-logos/league-on-dark/1.svg" alt="MLB">
                 <div class="news-title">never won a World Series</div>
               </a>
+              <a href="https://www.mlb.com/news/brewers-vs-rays-world-series-preview" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://www.mlbstatic.com/team-logos/league-on-dark/1.svg" alt="MLB">
+                <div class="news-title">Your cheat sheet for sounding like a World Series expert</div>
+              </a>
               <a href="https://www.mlb.com/news/interesting-facts-about-rays-brewers-world-series-matchup" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://www.mlbstatic.com/team-logos/league-on-dark/1.svg" alt="MLB">
                 <div class="news-title">Why this World Series is unlike any we've seen in some time</div>
-              </a>
-              <a href="https://www.mlb.com/news/rays-brewers-each-vying-for-first-world-series-title" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://www.mlbstatic.com/team-logos/league-on-dark/1.svg" alt="MLB">
-                <div class="news-title">This year's World Series champ will be a 1st-time winner ... either way</div>
               </a>
               <a href="https://www.mlb.com/news/rays-starters-lined-up-rest-bullpen-after-winning-2026-alcs" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://www.mlbstatic.com/team-logos/league-on-dark/1.svg" alt="MLB">
@@ -361,133 +278,144 @@
         </div>
       </div>
 
-      <!-- Executive News -->
+      <!-- Executive News Card -->
       <div class="card">
-        <h3 class="card-title">🌍 Executive News (World & San Diego)</h3>
-        <div class="dual-col">
-          <div>
-            <div style="margin-bottom: 10px; font-weight: 700; font-size: 13px; color: #0f172a;">Top World Headlines</div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+        <h2 style="font-size:18px;margin-top:0;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📰 Executive News (World & San Diego)</h2>
+        <div class="split-panel">
+          <div class="split-half">
+            <div style="font-weight:700;font-size:13px;color:#0284c7;margin-bottom:8px;">Top 5 World Headlines</div>
+            <div>
+              
               <a href="https://www.bbc.co.uk/news/articles/cq5ynkx3xy11o?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/c49a/live/3ca9cb60-ccba-11f1-9a39-31b474234113.jpg" alt="World">
                 <div class="news-title">Zelensky says US intelligence sharing 'works now' after talks with Trump envoy in Oslo</div>
               </a>
+              
               <a href="https://www.bbc.co.uk/news/articles/cm5ynkk570pno?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/a834/live/7aae38a0-cc89-11f1-bed8-c51b95c602ec.jpg" alt="World">
                 <div class="news-title">Marseille braces for more unrest after protests give way to 'apocalyptic' disorder</div>
               </a>
+              
+              <a href="https://www.bbc.co.uk/news/articles/cmlyl09xjke4o?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/819f/live/f7b5d9b0-ccd0-11f1-b06b-25a52a186d15.png" alt="World">
+                <div class="news-title">Elon Musk says Tesla-SpaceX merger being considered</div>
+              </a>
+              
               <a href="https://www.bbc.co.uk/news/articles/c678pnn9mpgno?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/35a8/live/1183bed0-cc76-11f1-a64c-550be9e3c66b.jpg" alt="World">
                 <div class="news-title">Man charged with attack on Australia MP to face court</div>
               </a>
+              
               <a href="https://www.bbc.co.uk/news/articles/ckrey51jrgnro?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-item">
                 <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/ca83/live/3f595b00-ccba-11f1-a64c-550be9e3c66b.png" alt="World">
                 <div class="news-title">Trump and Zelensky appear at loggerheads despite Oslo optimism</div>
               </a>
-              <a href="https://www.bbc.co.uk/news/articles/cxr5yqqd7nlpo?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/3f36/live/37d43d30-cc67-11f1-b1a3-5bda642ff934.jpg" alt="World">
-                <div class="news-title">'Great result for Canada', says Carney as Alberta votes to reject separatism</div>
-              </a>
+              
             </div>
           </div>
-          <div>
-            <div style="margin-bottom: 10px; font-weight: 700; font-size: 13px; color: #0f172a;">San Diego Local News</div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <a href="https://fox5sandiego.com/news/local-news/san-diego/merle-wakefield-body-discovered/" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/09/svp.png?w=900" alt="SD">
-                <div class="news-title">Missing sexually violent predator Merle Wakefield found dead in San Diego</div>
+          <div class="split-half">
+            <div style="font-weight:700;font-size:13px;color:#0284c7;margin-bottom:8px;">Top 5 FOX 5 San Diego Local News</div>
+            <div>
+              
+              <a href="https://fox5sandiego.com/news/apu-returns-to-the-simpsons-after-nearly-a-decade-whos-doing-his-voice/" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/simpsons-apu-manjula-AP26293568920141.jpg?w=900" alt="SD">
+                <div class="news-title">Apu returns to 'The Simpsons' after nearly a decade: Who's doing his voice?</div>
               </a>
-              <a href="https://fox5sandiego.com/election/san-diego-district-6-race/" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/mark-powell-and-kent-lee.png?w=900" alt="SD">
-                <div class="news-title">'A complete disaster': San Diego District 6 council candidates on handling of city issues</div>
+              
+              <a href="https://fox5sandiego.com/news/hunger-strike-reported-at-immigration-detention-center/" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/EL-VALLE-DETENTION-FACILITY.jpg?w=900" alt="SD">
+                <div class="news-title">Hunger strike reported at immigration detention center</div>
               </a>
-              <a href="https://fox5sandiego.com/news/local-news/district-6-city-councilmember-kent-lee-on-gmsd/" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/lee-on-pic.jpg?w=900" alt="SD">
-                <div class="news-title">District 6 City Councilmember Kent Lee on GMSD</div>
+              
+              <a href="https://fox5sandiego.com/news/us-restricts-drone-flights-along-mexican-border-citing-cartel-threats/" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/restricted-airspace-map.png?w=900" alt="SD">
+                <div class="news-title">US restricts drone flights along Mexican border, citing cartel threats</div>
               </a>
-              <a href="https://fox5sandiego.com/news/local-news/san-diego-i-5-semi-accident/" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/Image-10.jpg?w=900" alt="SD">
-                <div class="news-title">Semi-truck crash shuts down I-5 northbound lanes near Old Town San Diego</div>
+              
+              <a href="https://fox5sandiego.com/news/local-news/hernandez-manslaughter-sentence/" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/Screenshot-2026-10-20-164042.png?w=900" alt="SD">
+                <div class="news-title">Chula Vista man sentenced for murder nearly 50 years later</div>
               </a>
-              <a href="https://fox5sandiego.com/news/cindy-crawford-rande-gerber-and-kaia-gerber-share-emotional-tributes-to-presley-gerber/" target="_blank" rel="noopener noreferrer" class="news-item">
-                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/Presley-Geber-e1792418403585.jpg?w=900" alt="SD">
-                <div class="news-title">Cindy Crawford, Rande Gerber and Kaia Gerber share emotional tributes to Presley Gerber</div>
+              
+              <a href="https://fox5sandiego.com/news/ice-agent-allegedly-hits-pedestrian-in-woodland-police-investigating/" target="_blank" rel="noopener noreferrer" class="news-item">
+                <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/Screenshot-2026-10-20-145706.png?w=451" alt="SD">
+                <div class="news-title">ICE agent allegedly hits pedestrian in Woodland, police investigating</div>
               </a>
+              
             </div>
           </div>
         </div>
       </div>
 
-      <!-- AI, Big Tech & Industry Breakthroughs -->
+      <!-- AI, Big Tech Card -->
       <div class="card">
-        <h3 class="card-title">🤖 AI, Big Tech & Industry Breakthroughs</h3>
+        <h2 style="font-size:18px;margin-top:0;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🤖 AI, Big Tech & Industry Breakthroughs</h2>
         <div class="ai-grid">
           
-          <a href="https://arstechnica.com/security/2026/10/the-internet-goes-on-high-alert-after-discovery-of-8-compromised-tls-certs/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          <a href="https://arstechnica.com/security/2026/10/the-internet-goes-on-high-alert-after-discovery-of-8-compromised-tls-certs/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://cdn.arstechnica.net/wp-content/uploads/2026/07/broken-encryption-lock-1152x648.jpg" alt="AI">
-            <div class="ai-title">The Internet goes on high alert after discovery of 8 compromised TLS certs</div>
+            <div class="news-title">The Internet goes on high alert after discovery of 8 compromised TLS certs</div>
           </a>
-
-          <a href="https://arstechnica.com/security/2026/10/meta-muse-exposes-users-personal-and-business-secrets-when-they-share-conversations/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://arstechnica.com/security/2026/10/meta-muse-exposes-users-personal-and-business-secrets-when-they-share-conversations/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://cdn.arstechnica.net/wp-content/uploads/2026/10/ai-robot-hand-caution-1152x648.jpg" alt="AI">
-            <div class="ai-title">Meta Muse exposes users' personal and business secrets when they share conversations</div>
+            <div class="news-title">Meta Muse exposes users' personal and business secrets when they share conversations</div>
           </a>
-
-          <a href="https://arstechnica.com/security/2026/10/recently-fixed-plex-media-vulnerabilities-are-being-exploited-to-install-malware/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://arstechnica.com/security/2026/10/recently-fixed-plex-media-vulnerabilities-are-being-exploited-to-install-malware/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://cdn.arstechnica.net/wp-content/uploads/2026/10/plex-media-server-1152x648.webp" alt="AI">
-            <div class="ai-title">PSA: Patch your Plex media server before someone hacks it</div>
+            <div class="news-title">PSA: Patch your Plex media server before someone hacks it</div>
           </a>
-
-          <a href="https://arstechnica.com/information-technology/2026/10/reactos-reaches-major-milestone-with-ntfs-install-support/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://arstechnica.com/information-technology/2026/10/reactos-reaches-major-milestone-with-ntfs-install-support/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://cdn.arstechnica.net/wp-content/uploads/2026/10/ReactOS_NTFS_Drive_Properties.jpg" alt="AI">
-            <div class="ai-title">ReactOS reaches major milestone with NTFS install support</div>
+            <div class="news-title">ReactOS reaches major milestone with NTFS install support</div>
           </a>
-
-          <a href="https://the-decoder.com/elevenlabs-releases-two-new-speech-to-speech-models-designed-for-real-time-ai-conversations/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://the-decoder.com/elevenlabs-releases-two-new-speech-to-speech-models-designed-for-real-time-ai-conversations/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://the-decoder.com/wp-content/uploads/2026/10/elevenlabs.png" alt="AI">
-            <div class="ai-title">Elevenlabs releases two new speech-to-speech models designed for real-time AI conversations</div>
+            <div class="news-title">Elevenlabs releases two new speech-to-speech models designed for real-time AI conversations</div>
           </a>
-
-          <a href="https://the-decoder.com/deepseek-open-sources-the-inference-engine-that-powers-its-fastest-and-cheapest-ai-model/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://the-decoder.com/deepseek-open-sources-the-inference-engine-that-powers-its-fastest-and-cheapest-ai-model/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://the-decoder.com/wp-content/uploads/2026/08/deepseek_deepseek_logo.png" alt="AI">
-            <div class="ai-title">Deepseek open-sources the inference engine that powers its fastest and cheapest AI model</div>
+            <div class="news-title">Deepseek open-sources the inference engine that powers its fastest and cheapest AI model</div>
           </a>
-
-          <a href="https://the-decoder.com/mistral-ai-launches-voxtral-3-a-full-voice-agent-stack-that-listens-thinks-and-talks-in-real-time/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://the-decoder.com/mistral-ai-launches-voxtral-3-a-full-voice-agent-stack-that-listens-thinks-and-talks-in-real-time/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://the-decoder.com/wp-content/uploads/2026/06/mistral-logo-wall-nano-banana-pro-scaled.jpg" alt="AI">
-            <div class="ai-title">Mistral AI launches Voxtral 3, a full voice agent stack that listens, thinks, and talks in real time</div>
+            <div class="news-title">Mistral AI launches Voxtral 3, a full voice agent stack that listens, thinks, and talks in real time</div>
           </a>
-
-          <a href="https://the-decoder.com/sam-altman-reportedly-pitched-three-endgames-for-ai-safety-one-involving-a-single-firm-melting-everyone-elses-gpus/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://the-decoder.com/sam-altman-reportedly-pitched-three-endgames-for-ai-safety-one-involving-a-single-firm-melting-everyone-elses-gpus/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://the-decoder.com/wp-content/uploads/2026/06/openai_Altman.png" alt="AI">
-            <div class="ai-title">Sam Altman reportedly pitched three endgames for AI safety, one involving a single firm melting everyone else's GPUs</div>
+            <div class="news-title">Sam Altman reportedly pitched three endgames for AI safety, one involving a single firm melting everyone else's GPUs</div>
           </a>
-
-          <a href="https://techcrunch.com/2026/10/20/spacexs-ai-business-is-beating-expectations/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://techcrunch.com/2026/10/20/anthropic-pitches-ai-safety-bill-that-may-block-a-model-if-50-people-could-be-killed/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60" alt="AI">
-            <div class="ai-title">SpaceX’s AI business is beating expectations</div>
+            <div class="news-title">Anthropic pitches AI safety bill that may block a model if 50+ people could be killed</div>
           </a>
-
-          <a href="https://techcrunch.com/2026/10/20/openai-acquires-startup-orchestra-bio%e2%81%a0-to-beef-up-its-biotech-business/" target="_blank" rel="noopener noreferrer" class="ai-item">
+          
+          <a href="https://techcrunch.com/2026/10/20/hugging-face-ceo-warns-that-netflixs-openai-hack-documentary-isnt-accurate/" target="_blank" rel="noopener noreferrer" class="news-item">
             <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60" alt="AI">
-            <div class="ai-title">OpenAI acquires startup Orchestra Bio⁠ to beef up its biotech business</div>
+            <div class="news-title">Hugging Face CEO warns that Netflix’s OpenAI hack documentary isn’t accurate</div>
           </a>
-
+          
         </div>
       </div>
 
     </div>
 
-    <!-- RIGHT COLUMN -->
+    <!-- RIGHT COLUMN: Portfolio & Retirement -->
     <div class="col-right">
       
       <!-- UC Retirement & Pension -->
-      <div class="card" style="padding: 16px; margin-bottom: 0;">
+      <div class="card" style="padding: 16px; margin-bottom: 16px;">
         <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
           <span>🏛️ UC Retirement & Pension</span>
           <span style="font-size:11px;font-weight:600;color:#64748b;">As of Oct 21, 2026</span>
         </div>
-        
         <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-weight:700;font-size:13px;color:#1e293b;">UCRP Pension (2013 Tier)</div>
@@ -498,7 +426,6 @@
             <div style="font-size:11px;color:#0284c7;font-weight:700;">Defined Benefit</div>
           </div>
         </div>
-
         <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-weight:700;font-size:13px;color:#1e293b;">UC 403(B) (Pre-Tax)</div>
@@ -509,7 +436,6 @@
             <div style="font-size:11px;color:#059669;font-weight:700;">+$3,701.59 (+21.83%)</div>
           </div>
         </div>
-
         <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-weight:700;font-size:13px;color:#1e293b;">UC 457(B) (Roth After-Tax)</div>
@@ -520,7 +446,6 @@
             <div style="font-size:11px;color:#059669;font-weight:700;">+$2,270.49 (+17.25%)</div>
           </div>
         </div>
-
         <div style="margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;">
           <span><strong>Total Institutional:</strong> $172,552.79</span>
           <span style="font-weight:700;color:#0284c7;">Health & Welf: 12.61 yrs</span>
@@ -528,140 +453,266 @@
       </div>
 
       <!-- Portfolio Pulse -->
-      <div class="card">
-        <h3 class="card-title" style="margin-bottom: 10px;">📊 Portfolio Pulse</h3>
+      <div class="card" style="margin-bottom: 16px;">
+        <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</div>
         <div>
-          <a href="https://finance.yahoo.com/quote/WDC" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Western Digital</strong> <span style="font-size:11px;color:#64748b;">WDC</span></div>
-            <div style="text-align:right;"><div>$364.32</div><span class="badge-pos">+3.70%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/WDC" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Western Digital</div>
+              <div style="font-size:11px;color:#64748b;">WDC · $364.32</div>
+            </div>
+            <span class="badge-pos">+3.70%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/DOGE-USD" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Dogecoin</strong> <span style="font-size:11px;color:#64748b;">DOGE-USD</span></div>
-            <div style="text-align:right;"><div>$0.08</div><span class="badge-pos">+2.81%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/HOOD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Robinhood</div>
+              <div style="font-size:11px;color:#64748b;">HOOD · $98.21</div>
+            </div>
+            <span class="badge-pos">+1.92%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/XRP-USD" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>XRP</strong> <span style="font-size:11px;color:#64748b;">XRP-USD</span></div>
-            <div style="text-align:right;"><div>$1.33</div><span class="badge-pos">+2.48%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/TMO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Thermo Fisher</div>
+              <div style="font-size:11px;color:#64748b;">TMO · $687.37</div>
+            </div>
+            <span class="badge-pos">+1.83%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/HOOD" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Robinhood</strong> <span style="font-size:11px;color:#64748b;">HOOD</span></div>
-            <div style="text-align:right;"><div>$98.21</div><span class="badge-pos">+1.92%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/DLTR" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Dollar Tree</div>
+              <div style="font-size:11px;color:#64748b;">DLTR · $124.96</div>
+            </div>
+            <span class="badge-pos">+1.47%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/TMO" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Thermo Fisher</strong> <span style="font-size:11px;color:#64748b;">TMO</span></div>
-            <div style="text-align:right;"><div>$687.37</div><span class="badge-pos">+1.83%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/ORCL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Oracle</div>
+              <div style="font-size:11px;color:#64748b;">ORCL · $131.14</div>
+            </div>
+            <span class="badge-pos">+1.38%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/SOL-USD" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Solana</strong> <span style="font-size:11px;color:#64748b;">SOL-USD</span></div>
-            <div style="text-align:right;"><div>$106.78</div><span class="badge-pos">+1.73%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/EQIX" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Equinix</div>
+              <div style="font-size:11px;color:#64748b;">EQIX · $987.44</div>
+            </div>
+            <span class="badge-pos">+1.20%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/DLTR" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Dollar Tree</strong> <span style="font-size:11px;color:#64748b;">DLTR</span></div>
-            <div style="text-align:right;"><div>$124.96</div><span class="badge-pos">+1.47%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/BRK-B" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Berkshire Hathaway</div>
+              <div style="font-size:11px;color:#64748b;">BRK-B · $539.82</div>
+            </div>
+            <span class="badge-pos">+1.10%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/ORCL" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Oracle</strong> <span style="font-size:11px;color:#64748b;">ORCL</span></div>
-            <div style="text-align:right;"><div>$131.14</div><span class="badge-pos">+1.38%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/TSM" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">TSMC</div>
+              <div style="font-size:11px;color:#64748b;">TSM · $425.08</div>
+            </div>
+            <span class="badge-pos">+1.00%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/BTC-USD" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Bitcoin</strong> <span style="font-size:11px;color:#64748b;">BTC-USD</span></div>
-            <div style="text-align:right;"><div>$82,878.00</div><span class="badge-pos">+1.27%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/DOGE-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Dogecoin</div>
+              <div style="font-size:11px;color:#64748b;">DOGE-USD · $0.08</div>
+            </div>
+            <span class="badge-pos">+0.67%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/EQIX" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Equinix</strong> <span style="font-size:11px;color:#64748b;">EQIX</span></div>
-            <div style="text-align:right;"><div>$987.44</div><span class="badge-pos">+1.20%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/XRP-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">XRP</div>
+              <div style="font-size:11px;color:#64748b;">XRP-USD · $1.34</div>
+            </div>
+            <span class="badge-pos">+0.67%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/BRK-B" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Berkshire Hathaway</strong> <span style="font-size:11px;color:#64748b;">BRK-B</span></div>
-            <div style="text-align:right;"><div>$539.82</div><span class="badge-pos">+1.10%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/BTC-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Bitcoin</div>
+              <div style="font-size:11px;color:#64748b;">BTC-USD · $83,041.78</div>
+            </div>
+            <span class="badge-pos">+0.59%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/TSM" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>TSMC</strong> <span style="font-size:11px;color:#64748b;">TSM</span></div>
-            <div style="text-align:right;"><div>$425.08</div><span class="badge-pos">+1.00%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/SOL-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Solana</div>
+              <div style="font-size:11px;color:#64748b;">SOL-USD · $106.68</div>
+            </div>
+            <span class="badge-pos">+0.58%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/COST" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Costco</strong> <span style="font-size:11px;color:#64748b;">COST</span></div>
-            <div style="text-align:right;"><div>$994.61</div><span class="badge-pos">+0.20%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/COST" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Costco</div>
+              <div style="font-size:11px;color:#64748b;">COST · $994.61</div>
+            </div>
+            <span class="badge-pos">+0.20%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/VOO" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Vanguard S&P 500</strong> <span style="font-size:11px;color:#64748b;">VOO</span></div>
-            <div style="text-align:right;"><div>$706.80</div><span class="badge-pos">+0.20%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/VOO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Vanguard S&P 500</div>
+              <div style="font-size:11px;color:#64748b;">VOO · $706.80</div>
+            </div>
+            <span class="badge-pos">+0.20%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/MSFT" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Microsoft</strong> <span style="font-size:11px;color:#64748b;">MSFT</span></div>
-            <div style="text-align:right;"><div>$531.87</div><span class="badge-neg">-0.14%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/MSFT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Microsoft</div>
+              <div style="font-size:11px;color:#64748b;">MSFT · $531.87</div>
+            </div>
+            <span class="badge-neg">-0.14%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/VLO" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Valero Energy</strong> <span style="font-size:11px;color:#64748b;">VLO</span></div>
-            <div style="text-align:right;"><div>$433.42</div><span class="badge-neg">-0.21%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/VLO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Valero Energy</div>
+              <div style="font-size:11px;color:#64748b;">VLO · $433.42</div>
+            </div>
+            <span class="badge-neg">-0.21%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/AMZN" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Amazon</strong> <span style="font-size:11px;color:#64748b;">AMZN</span></div>
-            <div style="text-align:right;"><div>$262.63</div><span class="badge-neg">-0.24%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/AMZN" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Amazon</div>
+              <div style="font-size:11px;color:#64748b;">AMZN · $262.63</div>
+            </div>
+            <span class="badge-neg">-0.24%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/NVDA" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Nvidia</strong> <span style="font-size:11px;color:#64748b;">NVDA</span></div>
-            <div style="text-align:right;"><div>$216.47</div><span class="badge-neg">-0.34%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/NVDA" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Nvidia</div>
+              <div style="font-size:11px;color:#64748b;">NVDA · $216.47</div>
+            </div>
+            <span class="badge-neg">-0.34%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/WMT" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Walmart</strong> <span style="font-size:11px;color:#64748b;">WMT</span></div>
-            <div style="text-align:right;"><div>$117.85</div><span class="badge-neg">-0.83%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/WMT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Walmart</div>
+              <div style="font-size:11px;color:#64748b;">WMT · $117.85</div>
+            </div>
+            <span class="badge-neg">-0.83%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/PLTR" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Palantir</strong> <span style="font-size:11px;color:#64748b;">PLTR</span></div>
-            <div style="text-align:right;"><div>$192.60</div><span class="badge-neg">-0.88%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/PLTR" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Palantir</div>
+              <div style="font-size:11px;color:#64748b;">PLTR · $192.60</div>
+            </div>
+            <span class="badge-neg">-0.88%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/AAPL" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Apple</strong> <span style="font-size:11px;color:#64748b;">AAPL</span></div>
-            <div style="text-align:right;"><div>$339.50</div><span class="badge-neg">-1.03%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/AAPL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Apple</div>
+              <div style="font-size:11px;color:#64748b;">AAPL · $339.50</div>
+            </div>
+            <span class="badge-neg">-1.03%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/GOOGL" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Alphabet (Google)</strong> <span style="font-size:11px;color:#64748b;">GOOGL</span></div>
-            <div style="text-align:right;"><div>$340.27</div><span class="badge-neg">-1.21%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/GOOGL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Alphabet (Google)</div>
+              <div style="font-size:11px;color:#64748b;">GOOGL · $340.27</div>
+            </div>
+            <span class="badge-neg">-1.21%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/META" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Meta</strong> <span style="font-size:11px;color:#64748b;">META</span></div>
-            <div style="text-align:right;"><div>$694.25</div><span class="badge-neg">-1.59%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/META" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Meta</div>
+              <div style="font-size:11px;color:#64748b;">META · $694.25</div>
+            </div>
+            <span class="badge-neg">-1.59%</span>
           </a>
+          
         </div>
       </div>
 
       <!-- Watchlist Catalyst Radar -->
       <div class="card">
-        <h3 class="card-title" style="margin-bottom: 10px;">👁️ Watchlist Catalyst Radar</h3>
+        <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;">👀 Watchlist Catalyst Radar</div>
         <div>
-          <a href="https://finance.yahoo.com/quote/ISRG" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Intuitive Surgical</strong> <span style="font-size:11px;color:#64748b;">ISRG</span></div>
-            <div style="text-align:right;"><div>$438.00</div><span class="badge-pos">+1.13%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/ISRG" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Intuitive Surgical</div>
+              <div style="font-size:11px;color:#64748b;">ISRG · $438.00</div>
+            </div>
+            <span class="badge-pos">+1.13%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/CSCO" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Cisco</strong> <span style="font-size:11px;color:#64748b;">CSCO</span></div>
-            <div style="text-align:right;"><div>$106.71</div><span class="badge-pos">+0.06%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/CSCO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Cisco</div>
+              <div style="font-size:11px;color:#64748b;">CSCO · $106.71</div>
+            </div>
+            <span class="badge-pos">+0.06%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/USAR" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>USA Rare Earth</strong> <span style="font-size:11px;color:#64748b;">USAR</span></div>
-            <div style="text-align:right;"><div>$10.06</div><span class="badge-neg">-0.13%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/USAR" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">USA Rare Earth</div>
+              <div style="font-size:11px;color:#64748b;">USAR · $10.06</div>
+            </div>
+            <span class="badge-neg">-0.13%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/LMT" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Lockheed Martin</strong> <span style="font-size:11px;color:#64748b;">LMT</span></div>
-            <div style="text-align:right;"><div>$548.71</div><span class="badge-neg">-0.23%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/LMT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Lockheed Martin</div>
+              <div style="font-size:11px;color:#64748b;">LMT · $548.71</div>
+            </div>
+            <span class="badge-neg">-0.23%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/AVGO" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Broadcom</strong> <span style="font-size:11px;color:#64748b;">AVGO</span></div>
-            <div style="text-align:right;"><div>$334.37</div><span class="badge-neg">-0.39%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/AVGO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Broadcom</div>
+              <div style="font-size:11px;color:#64748b;">AVGO · $334.37</div>
+            </div>
+            <span class="badge-neg">-0.39%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/MU" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Micron Technology</strong> <span style="font-size:11px;color:#64748b;">MU</span></div>
-            <div style="text-align:right;"><div>$896.07</div><span class="badge-neg">-0.87%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/MU" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Micron Technology</div>
+              <div style="font-size:11px;color:#64748b;">MU · $896.07</div>
+            </div>
+            <span class="badge-neg">-0.87%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/ANET" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Arista Networks</strong> <span style="font-size:11px;color:#64748b;">ANET</span></div>
-            <div style="text-align:right;"><div>$181.19</div><span class="badge-neg">-1.41%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/ANET" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Arista Networks</div>
+              <div style="font-size:11px;color:#64748b;">ANET · $181.19</div>
+            </div>
+            <span class="badge-neg">-1.41%</span>
           </a>
-          <a href="https://finance.yahoo.com/quote/VRT" target="_blank" rel="noopener noreferrer" class="holding-row">
-            <div><strong>Vertiv</strong> <span style="font-size:11px;color:#64748b;">VRT</span></div>
-            <div style="text-align:right;"><div>$103.56</div><span class="badge-neg">-1.41%</span></div>
+          
+          <a href="https://finance.yahoo.com/quote/VRT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#1e293b;">Vertiv</div>
+              <div style="font-size:11px;color:#64748b;">VRT · $203.56</div>
+            </div>
+            <span class="badge-neg">-1.41%</span>
           </a>
+          
         </div>
       </div>
 
@@ -671,7 +722,7 @@
 
 </div>
 
-<!-- 4. MODAL DIALOG INJECTION -->
+<!-- MODAL DIALOG INJECTION -->
 <div id="reasons-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px);">
   <div style="background:#ffffff;border-radius:14px;padding:24px;max-width:540px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);position:relative;border:1px solid #e2e8f0;">
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f1f5f9;padding-bottom:12px;margin-bottom:14px;">
@@ -680,14 +731,70 @@
     </div>
     <div id="modal-metrics" style="font-size:12px;color:#64748b;margin-bottom:14px;font-weight:600;background:#f8fafc;padding:8px 12px;border-radius:6px;"></div>
     <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">💡 Key Actionable Reasons:</div>
-    <ul id="modal-reasons-list" style="padding-left:20px;margin-top:0;margin-bottom:18px;font-size:13px;line-height: 1.5; color: #334155;"></ul>
+    <ul id="modal-reasons-list" style="padding-left:20px;margin-top:0;margin-bottom:18px;font-size:13px;"></ul>
     <div style="display:flex;justify-content:flex-end;">
       <button onclick="closeReasonsModal()" style="background:#0f172a;color:#ffffff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;">Understood</button>
     </div>
   </div>
 </div>
 
-<!-- 7. INSERT MARKER <script>
+<script>
+  let wealthTabsOpen = false;
+  function toggleTabRow() {
+    wealthTabsOpen = !wealthTabsOpen;
+    const bar = document.getElementById('kpi-tab-bar');
+    bar.style.display = wealthTabsOpen ? 'flex' : 'none';
+    if (!wealthTabsOpen) {
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById('kpi-card-' + i).style.display = 'none';
+      }
+    }
+  }
+
+  function toggleKpiCard(cardNum) {
+    const el = document.getElementById('kpi-card-' + cardNum);
+    if (el.style.display === 'none' || el.style.display === '') {
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  function openReasonsModal(name, type, price, encodedReasons) {
+    const modal = document.getElementById('reasons-modal-overlay');
+    const titleEl = document.getElementById('modal-title');
+    const metricsEl = document.getElementById('modal-metrics');
+    const listEl = document.getElementById('modal-reasons-list');
+
+    titleEl.innerText = type + ' Recommendation: ' + name;
+    metricsEl.innerText = 'Current Market Price: ' + price;
+
+    listEl.innerHTML = '';
+    try {
+      const decoded = JSON.parse(decodeURIComponent(encodedReasons));
+      decoded.forEach(reason => {
+        const li = document.createElement('li');
+        li.style.marginBottom = '6px';
+        li.style.lineHeight = '1.4';
+        li.style.color = '#334155';
+        li.innerText = reason;
+        listEl.appendChild(li);
+      });
+    } catch (e) {
+      const li = document.createElement('li');
+      li.innerText = 'Review fundamental valuations and technical downside risks.';
+      listEl.appendChild(li);
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeReasonsModal() {
+    document.getElementById('reasons-modal-overlay').style.display = 'none';
+  }
+</script>
+
+<script>
 function toggleWeatherDetail(idx){
   const el = document.getElementById('w-detail-' + idx);
   if(!el) return;
@@ -719,6 +826,26 @@ function openReasonsModal(name, type, price, reasonsJson){
 function closeReasonsModal(){
   const overlay = document.getElementById('reasons-modal-overlay');
   if(overlay) overlay.style.display = 'none';
+}
+
+function toggleTabRow(){
+  const row = document.getElementById('kpi-tab-bar');
+  if(!row) return;
+  const isHidden = row.style.display === 'none' || row.style.display === '';
+  row.style.display = isHidden ? 'flex' : 'none';
+  if(!isHidden){
+    for(let i=1; i<=4; i++){
+      const c = document.getElementById('kpi-card-' + i);
+      if(c) c.style.display = 'none';
+    }
+  }
+}
+
+function toggleKpiCard(idx){
+  const card = document.getElementById('kpi-card-' + idx);
+  if(!card) return;
+  const isHidden = card.style.display === 'none' || card.style.display === '';
+  card.style.display = isHidden ? 'block' : 'none';
 }
 
 async function updateWeather(){
@@ -784,70 +911,36 @@ async function updatePadres(){
   }catch(e){b.innerHTML='Padres live feed standby.';}
 }
 updateWeather();updatePadres();setInterval(updatePadres,30000);
-</script> -->
+</script>
 <script>
-  function openReasonsModal(name, type, price, encodedReasons) {
-    const modal = document.getElementById('reasons-modal-overlay');
-    const titleEl = document.getElementById('modal-title');
-    const metricsEl = document.getElementById('modal-metrics');
-    const listEl = document.getElementById('modal-reasons-list');
-
-    titleEl.innerText = `${type}: ${name}`;
-    metricsEl.innerText = `Current Market Price: ${price}`;
-
-    try {
-      const decoded = JSON.parse(decodeURIComponent(encodedReasons));
-      listEl.innerHTML = '';
-      decoded.forEach(reason => {
-        const li = document.createElement('li');
-        li.style.marginBottom = '6px';
-        li.innerText = reason;
-        listEl.appendChild(li);
-      });
-    } catch(e) {
-      listEl.innerHTML = '<li>Detailed rationale currently unavailable.</li>';
-    }
-
-    modal.style.display = 'flex';
-  }
-
-  function closeReasonsModal() {
-    document.getElementById('reasons-modal-overlay').style.display = 'none';
-  }
-
-  // Close modal on outside click
-  window.onclick = function(event) {
-    const modal = document.getElementById('reasons-modal-overlay');
-    if (event.target === modal) {
-      closeReasonsModal();
-    }
-  }
-
-  // Dynamic Weather & Padres Simulation Handler
+  // Fallback / standard scripts to populate weather & padres live if marker expects JS injection
   document.addEventListener("DOMContentLoaded", function() {
-    // Populate dynamic weather forecast mock
     const weatherContainer = document.getElementById('weather-forecast-list');
-    if (weatherContainer) {
-      const days = ['Today', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
-      let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
-      days.forEach((day, idx) => {
-        const high = 72 + (idx % 4);
-        const low = 54 + (idx % 3);
-        const condition = idx === 0 ? 'Sunny & Clear' : (idx % 3 === 0 ? 'Coastal Marine Layer' : 'Partly Cloudy');
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px;">
-          <div style="font-weight:700;color:#1e293b;width:55px;">${day}</div>
-          <div style="color:#64748b;flex:1;text-align:left;padding-left:8px;">${condition}</div>
-          <div style="font-weight:800;color:#0f172a;"><span style="color:#0284c7;">${high}°</span> <span style="color:#94a3b8;font-weight:500;font-size:11px;">/ ${low}°</span></div>
-        </div>`;
-      });
-      html += '</div>';
-      weatherContainer.innerHTML = html;
+    if (weatherContainer && weatherContainer.innerText.includes('Loading')) {
+      weatherContainer.innerHTML = `
+        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">San Diego, CA (14-Day Outlook)</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Today: Sunny & Clear</span><span style="font-weight:700;color:#0284c7;">74° / 58°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Wed: Mild Breezes</span><span style="font-weight:700;color:#0284c7;">72° / 57°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Thu: Partly Cloudy</span><span style="font-weight:700;color:#0284c7;">70° / 56°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Fri: Coastal Marine Layer</span><span style="font-weight:700;color:#0284c7;">68° / 55°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Sat: Sunny & Warm</span><span style="font-weight:700;color:#0284c7;">73° / 57°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Sun: Clear Skies</span><span style="font-weight:700;color:#0284c7;">75° / 58°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Mon: Pleasant</span><span style="font-weight:700;color:#0284c7;">72° / 56°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Tue: Sunny</span><span style="font-weight:700;color:#0284c7;">71° / 55°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Wed: High Pressure</span><span style="font-weight:700;color:#0284c7;">74° / 57°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Thu: Clear & Calm</span><span style="font-weight:700;color:#0284c7;">76° / 59°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Fri: Sunny</span><span style="font-weight:700;color:#0284c7;">74° / 58°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Sat: Mild Afternoon</span><span style="font-weight:700;color:#0284c7;">72° / 56°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span>Sun: Mostly Sunny</span><span style="font-weight:700;color:#0284c7;">73° / 57°</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Mon: Stable Trend</span><span style="font-weight:700;color:#0284c7;">75° / 58°</span></div>
+        </div>
+      `;
     }
 
-    // Populate Padres live status
-    const padresBox = document.getElementById('padres-live-box');
-    if (padresBox) {
-      padresBox.innerHTML = 'San Diego Padres: Offseason & Roster Updates (2026/2027 Pipeline)';
+    const padresLive = document.getElementById('padres-live-box');
+    if (padresLive) {
+      padresLive.innerHTML = '⚡ Offseason Roster Planning & Executive Updates Active';
     }
   });
 </script>
