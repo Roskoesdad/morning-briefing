@@ -532,11 +532,11 @@ def get_catalysts():
     
     for s in signals:
         if s.get("is_sell") and best_replacement:
-            rep_type = "Holding" if best_replacement["in_holdings"] else "New"
             s["replacement_ticker"] = best_replacement["ticker"]
             s["replacement_name"] = best_replacement["name"]
             s["replacement_url"] = best_replacement["url"]
-            s["replacement_text"] = f"{best_replacement['name']} ({rep_type}: {best_replacement['rec'].upper().replace('_', ' ')}, +{best_replacement['upside']:.0f}% upside)"
+            # Stripped "Holding: BUY," to show strictly company name and upside
+            s["replacement_text"] = f"{best_replacement['name']} (+{best_replacement['upside']:.0f}% upside)"
             buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
             s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
 
@@ -695,10 +695,10 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
          Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name</strong> <button onclick="openReasonsModal('item.name', 'SELL', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ 3 reasons why</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a> <button onclick="openReasonsModal('item.replacement_name', 'BUY', 'item.replacement_reasons_encoded')" style='background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ 3 reasons why</button></span></div>.
        - Otherwise (BUY MORE or BREAKING OUT):
          Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name</strong> <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
-   - CRITICAL TEXT REQUIREMENTS:
-     - STRICTLY REMOVE all price references like ':at $339.50' or ':at x dollar amount'. Do not output any dollar signs or colon prices in the sell portion.
-     - The sell button text MUST be '↗ 3 reasons why' (NOT 'View 3 Reasons').
-     - The buy replacement section MUST keep its current text format and add '↗ 3 reasons why' opening the buy reasons modal.
+   - CRITICAL TEXT RESTRICTIONS:
+     - DO NOT render 'Holding: BUY,' anywhere under the Buy section.
+     - The Buy section should read cleanly like: '🔄 Buy: Oracle (+81% upside) ↗ ↗ 3 reasons why'.
+     - DO NOT render price references like ':at $339.50' under Sell.
      - DO NOT render 'TARGET INVERSION' or parenthetical target prices.
      - Always use full company names (e.g. 'Apple', 'Valero Energy', 'Oracle').
    - If 'catalysts' is empty, render nothing at all.
