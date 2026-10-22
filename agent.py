@@ -201,23 +201,26 @@ function closeReasonsModal(){
 function toggleTabRow(){
   const row = document.getElementById('kpi-tab-bar');
   const cardsContainer = document.getElementById('kpi-cards-grid');
+  const toggleBtnSub = document.getElementById('wealth-toggle-subtext');
   if(!row || !cardsContainer) return;
   
-  const isHidden = row.style.display === 'none' || row.style.display === '';
-  if(isHidden){
-    row.style.display = 'flex';
-    cardsContainer.style.display = 'grid';
-    for(let i=1; i<=4; i++){
-      const c = document.getElementById('kpi-card-' + i);
-      if(c) c.style.display = 'block';
-    }
-  } else {
+  const isCurrentlyShown = cardsContainer.style.display === 'grid';
+  if(isCurrentlyShown){
     row.style.display = 'none';
     cardsContainer.style.display = 'none';
     for(let i=1; i<=4; i++){
       const c = document.getElementById('kpi-card-' + i);
       if(c) c.style.display = 'none';
     }
+    if(toggleBtnSub) toggleBtnSub.innerText = '(Click to reveal summary)';
+  } else {
+    row.style.display = 'flex';
+    cardsContainer.style.display = 'grid';
+    for(let i=1; i<=4; i++){
+      const c = document.getElementById('kpi-card-' + i);
+      if(c) c.style.display = 'block';
+    }
+    if(toggleBtnSub) toggleBtnSub.innerText = '(Click to hide summary)';
   }
 }
 
@@ -751,6 +754,7 @@ def run_agent():
     world_html = render_news_items(world_news)
     sd_html = render_news_items(sd_news)
     
+    # 2-column side-by-side layout for AI & Tech matching other news blocks
     tech_html = f"""<div class="grid-2">
       <div>
         <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">AI Breakthroughs & Labs</div>
@@ -799,13 +803,13 @@ def run_agent():
     </div>
   </div>
 
-  <!-- Centered Privacy Executive Wealth Header -->
+  <!-- Centered Executive Wealth Header (Open by Default on Launch) -->
   <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;margin:10px auto 20px auto;">
     <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:inline-flex;align-items:center;gap:8px;">
       <span>💼 Executive Wealth Summary</span>
-      <span style="font-size:11px;color:#64748b;font-weight:500;">(Click to view tabs)</span>
+      <span id="wealth-toggle-subtext" style="font-size:11px;color:#64748b;font-weight:500;">(Click to hide summary)</span>
     </button>
-    <div id="kpi-tab-bar" style="display:none;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
+    <div id="kpi-tab-bar" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
       <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
       <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
       <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
@@ -813,24 +817,24 @@ def run_agent():
     </div>
   </div>
 
-  <!-- Metric Cards Grid (Reveals All 4 Simultaneously) -->
-  <div id="kpi-cards-grid" style="display:none;margin-top:14px;margin-bottom:20px;grid-template-columns:repeat(4,1fr);gap:16px;width:100%;">
-    <div id="kpi-card-1" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+  <!-- Metric Cards Grid (Displayed by Default) -->
+  <div id="kpi-cards-grid" style="display:grid;margin-top:14px;margin-bottom:20px;grid-template-columns:repeat(4,1fr);gap:16px;width:100%;">
+    <div id="kpi-card-1" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL LIQUID NET WORTH</div>
       <div style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">{summary['total_net_worth']}</div>
       <div style="font-size:13px;color:#64748b;font-weight:500;margin-top:4px;">Brokerage + Crypto + Full UC Benefits</div>
     </div>
-    <div id="kpi-card-2" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+    <div id="kpi-card-2" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL UC RETIREMENT & PENSION</div>
       <div style="font-size:26px;font-weight:800;color:#0284c7;margin-top:4px;">{summary['uc_total_balance']}</div>
       <div style="font-size:13px;color:#0284c7;font-weight:700;margin-top:4px;">UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})</div>
     </div>
-    <div id="kpi-card-3" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+    <div id="kpi-card-3" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">ACTIVE BROKERAGE EQUITY</div>
       <div style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">{summary['brokerage_equity']}</div>
       <div style="font-size:13px;color:#059669;font-weight:700;margin-top:4px;">{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)</div>
     </div>
-    <div id="kpi-card-4" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+    <div id="kpi-card-4" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TODAY'S BROKERAGE GAIN</div>
       <div style="font-size:26px;font-weight:800;color:{day_color};margin-top:4px;">{summary['day_dollar']}</div>
       <div style="font-size:13px;color:{day_color};font-weight:700;margin-top:4px;">{summary['day_pct']} Intraday</div>
@@ -928,9 +932,10 @@ def run_agent():
             <div style="font-size:11px;color:#059669;font-weight:700;">{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div>
           </div>
         </div>
-        <div style="margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;">
-          <span><strong>Total Institutional:</strong> {summary['uc_total_balance']}</span>
-          <span style="font-weight:700;color:#0284c7;">Years of Service: {summary['service_counter_display']}</span>
+        <!-- 10% Larger Footer Row with "Total:" and dynamic "Years of Service:" counter -->
+        <div style="margin-top:12px;padding:12px 14px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:13.5px;color:#1e293b;border:1px solid #e2e8f0;">
+          <span><strong>Total:</strong> {summary['uc_total_balance']}</span>
+          <span style="font-weight:800;color:#0284c7;font-size:14px;">Years of Service: {summary['service_counter_display']}</span>
         </div>
       </div>
 
