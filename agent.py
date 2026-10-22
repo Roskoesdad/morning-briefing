@@ -464,7 +464,7 @@ def calculate_portfolio_summary():
     }
 
 def read_embedded_history():
-    """Reads persistent catalyst history from index.html so it survives GitHub Actions ephemeral runners."""
+    """Reads persistent catalyst history embedded directly into index.html across GitHub Actions runs."""
     html_file = "index.html"
     if os.path.exists(html_file):
         try:
@@ -473,14 +473,14 @@ def read_embedded_history():
                 m = re.search(r'<script id="catalyst-tracker-data" type="application/json">\s*({.*?})\s*</script>', content, re.DOTALL)
                 if m:
                     return json.loads(m.group(1))
-        except Exception as e:
-            print("Note reading embedded history:", e)
+        except Exception:
+            pass
     return {}
 
 def filter_active_catalysts(raw_signals):
     """
-    Suppresses any stock that has appeared across 2 days.
-    History is embedded directly into index.html so state persists across runs.
+    Suppresses any portfolio stock that has triggered an alert across 2 days.
+    History is tracked by the specific sell ticker and saved into index.html metadata.
     """
     history = read_embedded_history()
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -528,63 +528,16 @@ def filter_active_catalysts(raw_signals):
 
     return active_signals, history
 
-def get_market_movement_triggers():
-    triggers = []
-    for idx_sym in ["SPY", "QQQ"]:
-        try:
-            t = yf.Ticker(idx_sym)
-            fi = getattr(t, "fast_info", None)
-            pct = 0.0
-            if fi and fi.last_price and fi.previous_close:
-                pct = ((fi.last_price - fi.previous_close) / fi.previous_close) * 100.0
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    prev = float(h["Close"].iloc[-2])
-                    pct = ((p - prev) / prev) * 100.0
-
-            name = "S&P 500 (SPY)" if idx_sym == "SPY" else "Nasdaq-100 (QQQ)"
-            if pct <= -1.50:
-                triggers.append({
-                    "type": "MARKET SELL-OFF",
-                    "name": name,
-                    "ticker": idx_sym,
-                    "is_sell": True,
-                    "reasons_encoded": urllib.parse.quote(json.dumps([
-                        f"Broad Index Decline: {name} is experiencing an intraday decline of {pct:.2f}%.",
-                        "Capital Preservation: Trimming extended high-beta positions reduces drawdown exposure during index-wide liquidity contractions.",
-                        "Rebalancing Inflow: Raising cash during systemic dips creates dry powder to accumulate undervalued core equities."
-                    ]))
-                })
-            elif pct >= 1.75:
-                triggers.append({
-                    "type": "MARKET BREAKOUT",
-                    "name": name,
-                    "ticker": idx_sym,
-                    "is_sell": False,
-                    "reasons_encoded": urllib.parse.quote(json.dumps([
-                        f"Macro Upside Momentum: {name} is advancing +{pct:.2f}% with broad-based market breadth.",
-                        "Risk-On Acceleration: Institutional liquidity is flowing into high-conviction growth and technology leaders.",
-                        "Momentum Follow-Through: Heavy accumulation supports continuous multi-week target expansions."
-                    ]))
-                })
-        except Exception:
-            pass
-    return triggers
-
 def get_catalysts():
+    """
+    Focuses exclusively on stocks in PORTFOLIO_CONFIG['equities'].
+    Generates exact 'SELL [Stock]' triggers paired with an undervalued 'BUY [Stock]' replacement.
+    """
     signals = []
     candidates_pool = []
-    seen = set()
-    scan_universe = HOLDINGS + WATCHLIST + BROAD_MARKET
     
-    market_events = get_market_movement_triggers()
-
-    for tkr in scan_universe:
-        if "-USD" in tkr or tkr in seen:
-            continue
-        seen.add(tkr)
+    # 1. Evaluate your portfolio holdings strictly
+    for tkr in PORTFOLIO_CONFIG["equities"].keys():
         try:
             t = yf.Ticker(tkr)
             fi = getattr(t, "fast_info", None)
@@ -610,9 +563,9 @@ def get_catalysts():
                 
                 is_official_sell = rec in ["sell", "strong_sell", "underperform"]
                 is_target_inversion = upside <= -3.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
-                is_major_holding_selloff = tkr in HOLDINGS and day_pct <= -4.0 and vr >= 1.25
+                is_major_selloff = day_pct <= -4.0 and vr >= 1.25
                 
-                if tkr in HOLDINGS and (is_official_sell or is_target_inversion or is_major_holding_selloff):
+                if is_official_sell or is_target_inversion or is_major_selloff:
                     action_badge = "STRONG SELL" if (rec == "strong_sell" or day_pct <= -5.0) else "SELL"
                     reasons_list = generate_reasons(tkr, "SELL", price, target, upside, rec)
                     reasons_encoded = urllib.parse.quote(json.dumps(reasons_list))
@@ -620,34 +573,42 @@ def get_catalysts():
                     signals.append({
                         "ticker": tkr,
                         "name": c_name,
-                        "group": "Current Holding",
                         "type": action_badge,
                         "upside_num": upside,
-                        "vol_ratio": f"{upside:+.0f}% Target",
-                        "pct": f"${price:.2f}",
                         "current_price": f"${price:.2f}",
                         "analysts": num_analysts,
                         "url": analysis_url,
                         "reasons_encoded": reasons_encoded,
                         "is_sell": True
                     })
-                    continue
-                
-                is_major_buy_breakout = (day_pct >= 4.0 and vr >= 1.5) or (rec in ["buy", "strong_buy"] and upside >= 18.0)
-                if is_major_buy_breakout:
+        except Exception:
+            pass
+
+    # 2. Find high-conviction replacement buys from Watchlist & Broad Leaders
+    scan_buy_pool = WATCHLIST + BROAD_MARKET + list(PORTFOLIO_CONFIG["equities"].keys())
+    seen_buy = set()
+    for tkr in scan_buy_pool:
+        if tkr in seen_buy or "-USD" in tkr:
+            continue
+        seen_buy.add(tkr)
+        try:
+            t = yf.Ticker(tkr)
+            fi = getattr(t, "fast_info", None)
+            info = getattr(t, "info", {}) or {}
+            price = fi.last_price if fi and fi.last_price else info.get("currentPrice")
+            target = info.get("targetMeanPrice")
+            rec = str(info.get("recommendationKey", "")).lower()
+            if price and target and target > 0 and price > 0:
+                upside = ((target - price) / price) * 100.0
+                if rec in ["buy", "strong_buy"] and upside >= 18.0:
                     candidates_pool.append({
                         "ticker": tkr,
-                        "name": c_name,
+                        "name": COMPANY_NAMES.get(tkr, tkr),
                         "rec": rec,
                         "upside": upside,
                         "price": price,
                         "target": target,
-                        "pullback": pullback,
-                        "vr": vr,
-                        "day_pct": day_pct,
-                        "analysts": num_analysts,
-                        "url": analysis_url,
-                        "in_holdings": tkr in HOLDINGS
+                        "url": f"https://finance.yahoo.com/quote/{tkr}/analysis"
                     })
         except Exception:
             pass
@@ -655,42 +616,15 @@ def get_catalysts():
     candidates_pool.sort(key=lambda x: x["upside"], reverse=True)
     best_replacement = candidates_pool[0] if candidates_pool else None
     
+    # 3. Pair each sell trigger directly with the top replacement buy
     for s in signals:
-        if s.get("is_sell") and best_replacement:
+        if best_replacement:
             s["replacement_ticker"] = best_replacement["ticker"]
             s["replacement_name"] = best_replacement["name"]
             s["replacement_url"] = best_replacement["url"]
             s["replacement_text"] = f"{best_replacement['name']} (+{best_replacement['upside']:.0f}% upside)"
             buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
             s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
-
-    if market_events and best_replacement:
-        for me in market_events:
-            me["replacement_ticker"] = best_replacement["ticker"]
-            me["replacement_name"] = best_replacement["name"]
-            me["replacement_url"] = best_replacement["url"]
-            me["replacement_text"] = f"{best_replacement['name']} (+{best_replacement['upside']:.0f}% upside)"
-            buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
-            me["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
-            signals.insert(0, me)
-
-    if not signals:
-        for me in market_events:
-            if not me.get("is_sell") and best_replacement:
-                signals.append({
-                    "ticker": best_replacement["ticker"],
-                    "name": best_replacement["name"],
-                    "group": "Major Market Breakout",
-                    "type": "BUY NOW",
-                    "upside_num": best_replacement["upside"],
-                    "vol_ratio": f"+{best_replacement['upside']:.0f}% Up",
-                    "pct": f"${best_replacement['price']:.2f}",
-                    "current_price": f"${best_replacement['price']:.2f}",
-                    "analysts": best_replacement["analysts"],
-                    "url": best_replacement["url"],
-                    "reasons_encoded": urllib.parse.quote(json.dumps(generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"]))),
-                    "is_sell": False
-                })
 
     signals.sort(key=lambda x: x.get("upside_num", 0), reverse=True)
     return filter_active_catalysts(signals[:4])
@@ -768,10 +702,13 @@ def run_agent():
     print("Calculating portfolio metrics and syncing market data...")
     summary = calculate_portfolio_summary()
 
-    ars = fetch_rss("https://feeds.arstechnica.com/arstechnica/technology-lab", 6, "ai")[:4]
-    decoder = fetch_rss("https://the-decoder.com/feed/", 6, "ai")[:4]
+    # Fetch all article feeds
+    ars = fetch_rss("https://feeds.arstechnica.com/arstechnica/technology-lab", 5, "ai")[:3]
+    decoder = fetch_rss("https://the-decoder.com/feed/", 5, "ai")[:3]
     tc = fetch_rss("https://techcrunch.com/category/artificial-intelligence/feed/", 4, "ai")[:2]
-    tech = (ars + decoder + tc)[:10]
+    tech_all = (ars + decoder + tc)
+    tech_left = tech_all[:4]
+    tech_right = tech_all[4:8]
 
     padres, mlb = fetch_padres_stories()
     world_news = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
@@ -782,27 +719,20 @@ def run_agent():
     catalysts, history_state = get_catalysts()
     day_color = "#00c805" if summary["is_day_positive"] else "#ef4444"
 
-    # Pre-render deterministic HTML components to prevent LLM omissions
+    # Format the catalyst alert banner
     catalyst_banner_html = ""
     if catalysts:
         items_html = ""
         for item in catalysts:
-            if item.get("is_sell"):
-                items_html += f"""<div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;">
-                  <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">{item['type']}</span>
-                  <strong>{item['name']}</strong>
-                  <button onclick="openReasonsModal('{item['name']}', 'SELL', '{item['reasons_encoded']}')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
-                  <span style="padding-left:10px;border-left:1px solid #fca5a5;display:inline-flex;align-items:center;gap:6px;">
-                    🔄 Buy: <a href="{item.get('replacement_url', '#')}" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">{item.get('replacement_text', '')} ↗</a>
-                    <button onclick="openReasonsModal('{item.get('replacement_name', '')}', 'BUY', '{item.get('replacement_reasons_encoded', '')}')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
-                  </span>
-                </div>"""
-            else:
-                items_html += f"""<div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;">
-                  <span style="background:#15803d;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">{item['type']}</span>
-                  <strong>{item['name']}</strong>
-                  <button onclick="openReasonsModal('{item['name']}', 'BUY', '{item['reasons_encoded']}')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
-                </div>"""
+            items_html += f"""<div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;">
+              <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">{item['type']}</span>
+              <strong>{item['name']}</strong>
+              <button onclick="openReasonsModal('{item['name']}', 'SELL', '{item['reasons_encoded']}')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+              <span style="padding-left:10px;border-left:1px solid #fca5a5;display:inline-flex;align-items:center;gap:6px;">
+                🔄 Buy: <a href="{item.get('replacement_url', '#')}" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">{item.get('replacement_text', '')} ↗</a>
+                <button onclick="openReasonsModal('{item.get('replacement_name', '')}', 'BUY', '{item.get('replacement_reasons_encoded', '')}')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+              </span>
+            </div>"""
         
         catalyst_banner_html = f"""<div style="margin-bottom:20px;padding:14px 22px;border:3px solid #ef4444;background:#fff5f5;animation:pulse-alert 1.5s infinite;display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:12px;border-radius:14px;">
           <div style="display:inline-flex;align-items:center;background:#ef4444;color:#ffffff;font-weight:700;padding:6px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">🚨 CATALYST ALERT</div>
@@ -813,11 +743,23 @@ def run_agent():
     mlb_html = render_news_items(mlb)
     world_html = render_news_items(world_news)
     sd_html = render_news_items(sd_news)
-    tech_html = render_news_items(tech)
+    
+    # 2-column side-by-side layout for AI & Tech matching other news blocks
+    tech_html = f"""<div class="grid-2">
+      <div>
+        <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">AI Breakthroughs & Labs</div>
+        {render_news_items(tech_left)}
+      </div>
+      <div>
+        <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">Big Tech & Cloud Insights</div>
+        {render_news_items(tech_right)}
+      </div>
+    </div>"""
+
     holdings_html = render_stock_list(holdings_quotes)
     watchlist_html = render_stock_list(watchlist_quotes)
 
-    # Embed persistent tracker metadata to enforce the strict 2-day rule in CI/CD
+    # Embed tracker state to ensure suppression across runs
     history_embed_tag = f'<script id="catalyst-tracker-data" type="application/json">\n{json.dumps(history_state, indent=2)}\n</script>'
 
     full_html = f"""<!DOCTYPE html>
@@ -889,13 +831,13 @@ def run_agent():
     </div>
   </div>
 
-  <!-- Catalyst Alert Banner -->
+  <!-- Catalyst Alert Banner (Hidden if no active signals or suppressed) -->
   {catalyst_banner_html}
 
-  <!-- 3-Column Executive Dashboard Body -->
+  <!-- 3-Column Top Level Layout -->
   <div style="display:flex;gap:20px;width:100%;align-items:flex-start;">
     
-    <!-- LEFT COLUMN: Weather -->
+    <!-- LEFT: Weather -->
     <div style="width:320px;flex-shrink:0;">
       <div class="card">
         <h2 id="weather-card-title" style="font-size:18px;margin-top:0;margin-bottom:12px;">Weather 14-Day</h2>
@@ -903,7 +845,7 @@ def run_agent():
       </div>
     </div>
 
-    <!-- CENTER COLUMN: Live Sports & Executive News -->
+    <!-- CENTER: Sports, Executive News, AI & Big Tech -->
     <div style="flex:1;">
       <!-- Sports Desk -->
       <div class="card">
@@ -935,14 +877,14 @@ def run_agent():
         </div>
       </div>
 
-      <!-- AI, Tech & Breakthroughs -->
+      <!-- AI, Big Tech & Industry Breakthroughs (2-Column Grid Matching Upper News Cards) -->
       <div class="card">
         <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">🤖 AI, Big Tech & Industry Breakthroughs</h2>
-        <div>{tech_html}</div>
+        {tech_html}
       </div>
     </div>
 
-    <!-- RIGHT COLUMN: Retirement Tracker & Portfolios -->
+    <!-- RIGHT: Institutional UC Retirement & Live Portfolio Stock Quotes -->
     <div style="width:350px;flex-shrink:0;">
       <!-- UC Retirement Card -->
       <div class="card">
@@ -986,13 +928,13 @@ def run_agent():
         </div>
       </div>
 
-      <!-- Active Portfolio Holdings -->
+      <!-- Active Portfolio Holdings Pulse -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</h2>
         <div>{holdings_html}</div>
       </div>
 
-      <!-- Watchlist -->
+      <!-- Watchlist Radar -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">🎯 Watchlist Catalyst Radar</h2>
         <div>{watchlist_html}</div>
