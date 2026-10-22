@@ -684,10 +684,10 @@ def get_candidate_models():
 def render_news_items(items):
     out = ""
     for it in items:
-        img_html = f'<img src="{it["image"]}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0;margin-right:12px;" onerror="this.src=\'{T_LOGO}\'" />' if it.get("image") else ""
-        out += f"""<a href="{it['link']}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:#1e293b;transition:background 0.15s ease;">
+        img_html = f'<img src="{it["image"]}" class="news-thumb" onerror="this.src=\'{T_LOGO}\'" />' if it.get("image") else ""
+        out += f"""<a href="{it['link']}" target="_blank" rel="noopener noreferrer" class="news-link">
           {img_html}
-          <span style="font-size:13px;font-weight:600;line-height:1.4;">{it['title']}</span>
+          <span class="news-title">{it['title']}</span>
         </a>"""
     return out
 
@@ -696,14 +696,14 @@ def render_stock_list(quotes):
     for q in quotes:
         color = "#15803d" if q["positive"] else "#dc2626"
         badge_bg = "#dcfce7" if q["positive"] else "#fee2e2"
-        out += f"""<a href="{q['url']}" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+        out += f"""<a href="{q['url']}" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
-            <div style="font-weight:700;font-size:13px;color:#0f172a;">{q['name']}</div>
-            <div style="font-size:11px;color:#64748b;">{q['ticker']}</div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">{q['name']}</div>
+            <div style="font-size:12px;color:#64748b;">{q['ticker']}</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:13px;color:#0f172a;">{q['price']}</div>
-            <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;color:{color};background:{badge_bg};margin-top:2px;">{q['pct']}</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">{q['price']}</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:{color};background:{badge_bg};margin-top:2px;">{q['pct']}</span>
           </div>
         </a>"""
     return out
@@ -734,18 +734,18 @@ def run_agent():
     if catalysts:
         items_html = ""
         for item in catalysts:
-            items_html += f"""<div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;">
-              <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">{item['type']}</span>
+            items_html += f"""<div class="alert-pill">
+              <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;">{item['type']}</span>
               <strong>{item['name']}</strong>
-              <button onclick="openReasonsModal('{item['name']}', 'SELL', '{item['reasons_encoded']}')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
-              <span style="padding-left:10px;border-left:1px solid #fca5a5;display:inline-flex;align-items:center;gap:6px;">
+              <button onclick="openReasonsModal('{item['name']}', 'SELL', '{item['reasons_encoded']}')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+              <span class="buy-section">
                 🔄 Buy: <a href="{item.get('replacement_url', '#')}" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">{item.get('replacement_text', '')} ↗</a>
-                <button onclick="openReasonsModal('{item.get('replacement_name', '')}', 'BUY', '{item.get('replacement_reasons_encoded', '')}')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+                <button onclick="openReasonsModal('{item.get('replacement_name', '')}', 'BUY', '{item.get('replacement_reasons_encoded', '')}')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
               </span>
             </div>"""
         
-        catalyst_banner_html = f"""<div style="margin-bottom:20px;padding:14px 22px;border:3px solid #ef4444;background:#fff5f5;animation:pulse-alert 1.5s infinite;display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:12px;border-radius:14px;">
-          <div style="display:inline-flex;align-items:center;background:#ef4444;color:#ffffff;font-weight:700;padding:6px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">🚨 CATALYST ALERT</div>
+        catalyst_banner_html = f"""<div class="catalyst-container">
+          <div style="display:inline-flex;align-items:center;background:#ef4444;color:#ffffff;font-weight:700;padding:7px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">🚨 CATALYST ALERT</div>
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;">{items_html}</div>
         </div>"""
 
@@ -754,7 +754,6 @@ def run_agent():
     world_html = render_news_items(world_news)
     sd_html = render_news_items(sd_news)
     
-    # 2-column side-by-side layout for AI & Tech matching other news blocks
     tech_html = f"""<div class="grid-2">
       <div>
         <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">AI Breakthroughs & Labs</div>
@@ -776,14 +775,56 @@ def run_agent():
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <title>Executive Briefing Dashboard</title>
   <style>
     * {{ box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}
-    body {{ margin: 0; background-color: #f1f5f9; color: #0f172a; padding: 16px; }}
+    body {{ margin: 0; background-color: #f1f5f9; color: #0f172a; padding: 16px; -webkit-text-size-adjust: 100%; }}
     @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
+    
     .card {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }}
+    
+    /* Layout Containers */
+    .dashboard-layout {{ display: flex; gap: 20px; width: 100%; align-items: flex-start; }}
+    .col-left {{ width: 320px; flex-shrink: 0; }}
+    .col-center {{ flex: 1; min-width: 0; }}
+    .col-right {{ width: 350px; flex-shrink: 0; }}
+    
+    .kpi-grid {{ display: grid; margin-top: 14px; margin-bottom: 20px; grid-template-columns: repeat(4, 1fr); gap: 16px; width: 100%; }}
     .grid-2 {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
+    
+    .news-link {{ display: flex; align-items: center; padding: 11px 0; border-bottom: 1px solid #f1f5f9; text-decoration: none; color: #1e293b; transition: background 0.15s ease; }}
+    .news-thumb {{ width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex-shrink: 0; margin-right: 12px; }}
+    .news-title {{ font-size: 13.5px; font-weight: 600; line-height: 1.45; }}
+    
+    .catalyst-container {{ margin-bottom: 20px; padding: 14px 20px; border: 3px solid #ef4444; background: #fff5f5; animation: pulse-alert 1.5s infinite; display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px; border-radius: 14px; }}
+    .alert-pill {{ display: inline-flex; align-items: center; padding: 9px 14px; background: #ffffff; border: 1px solid #fecaca; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 8px; }}
+    .buy-section {{ padding-left: 10px; border-left: 1px solid #fca5a5; display: inline-flex; align-items: center; gap: 6px; }}
+    
+    /* Mobile / Safari iPhone Responsive Styles (< 900px) */
+    @media screen and (max-width: 900px) {{
+      body {{ padding: 10px; }}
+      .dashboard-layout {{ display: flex; flex-direction: column; width: 100%; gap: 12px; }}
+      .col-left, .col-center, .col-right {{ width: 100% !important; flex: none !important; }}
+      
+      /* Make top Wealth Header a clean 2x2 grid on phone */
+      .kpi-grid {{ grid-template-columns: 1fr 1fr !important; gap: 10px !important; }}
+      .kpi-card {{ padding: 14px !important; }}
+      .kpi-value {{ font-size: 20px !important; }}
+      
+      /* Stack internal 2-column news blocks vertically on mobile */
+      .grid-2 {{ grid-template-columns: 1fr !important; gap: 12px !important; }}
+      
+      /* Optimize catalyst alert for mobile wrap */
+      .alert-pill {{ width: 100%; display: flex; justify-content: space-between; }}
+      .buy-section {{ border-left: none; padding-left: 0; border-top: 1px dashed #fca5a5; padding-top: 6px; width: 100%; margin-top: 4px; }}
+      
+      /* Tap targets and typography */
+      .news-title {{ font-size: 14px !important; }}
+      .card {{ padding: 14px !important; margin-bottom: 12px !important; }}
+    }}
   </style>
 </head>
 <body>
@@ -805,50 +846,50 @@ def run_agent():
 
   <!-- Centered Executive Wealth Header (Open by Default on Launch) -->
   <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;margin:10px auto 20px auto;">
-    <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:inline-flex;align-items:center;gap:8px;">
+    <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:9px 22px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:inline-flex;align-items:center;gap:8px;">
       <span>💼 Executive Wealth Summary</span>
       <span id="wealth-toggle-subtext" style="font-size:11px;color:#64748b;font-weight:500;">(Click to hide summary)</span>
     </button>
-    <div id="kpi-tab-bar" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
-      <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
-      <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
-      <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
-      <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
+    <div id="kpi-tab-bar" style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+      <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
+      <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
+      <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
+      <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
     </div>
   </div>
 
-  <!-- Metric Cards Grid (Displayed by Default) -->
-  <div id="kpi-cards-grid" style="display:grid;margin-top:14px;margin-bottom:20px;grid-template-columns:repeat(4,1fr);gap:16px;width:100%;">
-    <div id="kpi-card-1" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+  <!-- Metric Cards Grid (Displayed by Default in 4 cols on Desktop, 2x2 on Phone) -->
+  <div id="kpi-cards-grid" class="kpi-grid">
+    <div id="kpi-card-1" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL LIQUID NET WORTH</div>
-      <div style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">{summary['total_net_worth']}</div>
-      <div style="font-size:13px;color:#64748b;font-weight:500;margin-top:4px;">Brokerage + Crypto + Full UC Benefits</div>
+      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">{summary['total_net_worth']}</div>
+      <div style="font-size:12px;color:#64748b;font-weight:500;margin-top:4px;">Brokerage + Crypto + Full UC Benefits</div>
     </div>
-    <div id="kpi-card-2" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+    <div id="kpi-card-2" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL UC RETIREMENT & PENSION</div>
-      <div style="font-size:26px;font-weight:800;color:#0284c7;margin-top:4px;">{summary['uc_total_balance']}</div>
-      <div style="font-size:13px;color:#0284c7;font-weight:700;margin-top:4px;">UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})</div>
+      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#0284c7;margin-top:4px;">{summary['uc_total_balance']}</div>
+      <div style="font-size:12px;color:#0284c7;font-weight:700;margin-top:4px;">UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})</div>
     </div>
-    <div id="kpi-card-3" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+    <div id="kpi-card-3" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">ACTIVE BROKERAGE EQUITY</div>
-      <div style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">{summary['brokerage_equity']}</div>
-      <div style="font-size:13px;color:#059669;font-weight:700;margin-top:4px;">{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)</div>
+      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">{summary['brokerage_equity']}</div>
+      <div style="font-size:12px;color:#059669;font-weight:700;margin-top:4px;">{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)</div>
     </div>
-    <div id="kpi-card-4" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+    <div id="kpi-card-4" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TODAY'S BROKERAGE GAIN</div>
-      <div style="font-size:26px;font-weight:800;color:{day_color};margin-top:4px;">{summary['day_dollar']}</div>
-      <div style="font-size:13px;color:{day_color};font-weight:700;margin-top:4px;">{summary['day_pct']} Intraday</div>
+      <div class="kpi-value" style="font-size:26px;font-weight:800;color:{day_color};margin-top:4px;">{summary['day_dollar']}</div>
+      <div style="font-size:12px;color:{day_color};font-weight:700;margin-top:4px;">{summary['day_pct']} Intraday</div>
     </div>
   </div>
 
   <!-- Catalyst Alert Banner (Hidden if no active signals or suppressed) -->
   {catalyst_banner_html}
 
-  <!-- 3-Column Top Level Layout -->
-  <div style="display:flex;gap:20px;width:100%;align-items:flex-start;">
+  <!-- Responsive 3-Column Desktop / 1-Column iPhone Layout -->
+  <div class="dashboard-layout">
     
     <!-- LEFT: Weather -->
-    <div style="width:320px;flex-shrink:0;">
+    <div class="col-left">
       <div class="card">
         <h2 id="weather-card-title" style="font-size:18px;margin-top:0;margin-bottom:12px;">Weather 14-Day</h2>
         <div id="weather-forecast-list">Loading forecast...</div>
@@ -856,7 +897,7 @@ def run_agent():
     </div>
 
     <!-- CENTER: Sports, Executive News, AI & Big Tech -->
-    <div style="flex:1;">
+    <div class="col-center">
       <!-- Sports Desk -->
       <div class="card">
         <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">⚾ Sports Desk: San Diego Padres & MLB</h2>
@@ -895,7 +936,7 @@ def run_agent():
     </div>
 
     <!-- RIGHT: Institutional UC Retirement & Live Portfolio Stock Quotes -->
-    <div style="width:350px;flex-shrink:0;">
+    <div class="col-right">
       <!-- UC Retirement Card -->
       <div class="card">
         <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
