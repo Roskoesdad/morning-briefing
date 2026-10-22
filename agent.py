@@ -1,5 +1,5 @@
 import os, re, time, urllib.request, json, feedparser
-from datetime import datetime
+from datetime import datetime, date
 import yfinance as yf
 from bs4 import BeautifulSoup
 from google import genai
@@ -39,6 +39,7 @@ PORTFOLIO_CONFIG = {
     },
     "retirement": {
         "as_of": "Oct 21, 2026",
+        "benchmark_date": "2026-10-21",
         "combined_balance": 172552.79,
         "dc_plans_balance": 36087.69,
         "total_cost_basis": 30115.61,
@@ -52,8 +53,7 @@ PORTFOLIO_CONFIG = {
                 "balance": 136465.10,
                 "contributions": 99282.42,
                 "interest": 37182.68,
-                "service_credit": 12.6114,
-                "health_service": 12.6114,
+                "base_service_credit": 12.6114,
                 "start_date": "02/2014"
             },
             "403b": {
@@ -398,7 +398,7 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
     ]
 
 def calculate_portfolio_summary():
-    """Calculates all-time returns, day gains, and total valuation across Brokerages, UCRP Pension, and UC Savings."""
+    """Calculates all-time returns, day gains, dynamic service credit counter, and total valuation."""
     total_brokerage_equity = PORTFOLIO_CONFIG["cash"]
     total_prev_close_equity = PORTFOLIO_CONFIG["cash"]
 
@@ -441,6 +441,12 @@ def calculate_portfolio_summary():
 
     ucrp = ret_data["plans"]["ucrp"]
 
+    # Dynamic Daily Service Counter: increments daily based on elapsed calendar days
+    bench_date = datetime.strptime(ret_data.get("benchmark_date", "2026-10-21"), "%Y-%m-%d").date()
+    today = date.today()
+    days_elapsed = max(0, (today - bench_date).days)
+    dynamic_service = ucrp["base_service_credit"] + (days_elapsed / 365.25)
+
     return {
         "total_net_worth": f"${total_net_worth:,.2f}",
         "brokerage_equity": f"${total_brokerage_equity:,.2f}",
@@ -452,7 +458,8 @@ def calculate_portfolio_summary():
         "is_day_positive": day_dollar >= 0,
         "uc_total_balance": f"${total_uc_retirement:,.2f}",
         "ucrp_balance": f"${ucrp['balance']:,.2f}",
-        "ucrp_service": f"{ucrp['service_credit']:.2f} yrs",
+        "ucrp_service": f"{dynamic_service:.2f} yrs",
+        "service_counter_display": f"{dynamic_service:.2f}",
         "uc_dc_balance": f"${ret_data['dc_plans_balance']:,.2f}",
         "retirement_as_of": ret_data["as_of"],
         "plan_403b_bal": f"${ret_data['plans']['403b']['balance']:,.2f}",
@@ -744,7 +751,6 @@ def run_agent():
     world_html = render_news_items(world_news)
     sd_html = render_news_items(sd_news)
     
-    # 2-column side-by-side layout for AI & Tech matching other news blocks
     tech_html = f"""<div class="grid-2">
       <div>
         <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">AI Breakthroughs & Labs</div>
@@ -877,7 +883,7 @@ def run_agent():
         </div>
       </div>
 
-      <!-- AI, Big Tech & Industry Breakthroughs (2-Column Grid Matching Upper News Cards) -->
+      <!-- AI, Big Tech & Industry Breakthroughs -->
       <div class="card">
         <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">🤖 AI, Big Tech & Industry Breakthroughs</h2>
         {tech_html}
@@ -924,7 +930,7 @@ def run_agent():
         </div>
         <div style="margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;">
           <span><strong>Total Institutional:</strong> {summary['uc_total_balance']}</span>
-          <span style="font-weight:700;color:#0284c7;">Health & Welf: {summary['ucrp_service']}</span>
+          <span style="font-weight:700;color:#0284c7;">Years of Service: {summary['service_counter_display']}</span>
         </div>
       </div>
 
