@@ -1,4 +1,5 @@
 import os, re, time, urllib.request, json, feedparser
+from datetime import datetime
 import yfinance as yf
 from bs4 import BeautifulSoup
 from google import genai
@@ -199,10 +200,20 @@ function closeReasonsModal(){
 
 function toggleTabRow(){
   const row = document.getElementById('kpi-tab-bar');
-  if(!row) return;
+  const cardsContainer = document.getElementById('kpi-cards-grid');
+  if(!row || !cardsContainer) return;
+  
   const isHidden = row.style.display === 'none' || row.style.display === '';
-  row.style.display = isHidden ? 'flex' : 'none';
-  if(!isHidden){
+  if(isHidden){
+    row.style.display = 'flex';
+    cardsContainer.style.display = 'grid';
+    for(let i=1; i<=4; i++){
+      const c = document.getElementById('kpi-card-' + i);
+      if(c) c.style.display = 'block';
+    }
+  } else {
+    row.style.display = 'none';
+    cardsContainer.style.display = 'none';
     for(let i=1; i<=4; i++){
       const c = document.getElementById('kpi-card-' + i);
       if(c) c.style.display = 'none';
@@ -452,12 +463,131 @@ def calculate_portfolio_summary():
         "plan_457b_pct": f"+{ret_data['plans']['457b']['unrealized_pct']:.2f}%"
     }
 
+def filter_active_catalysts(raw_signals):
+    """
+    Suppresses signals once the primary asset being alerted has appeared for 2 days,
+    regardless of what replacement stock is paired with it.
+    """
+    history_file = "catalyst_history.json"
+    history = {}
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, "r") as f:
+                history = json.load(f)
+        except Exception:
+            history = {}
+
+    current_keys = set()
+    active_signals = []
+
+    for s in raw_signals:
+        primary_stock = s.get("ticker", "")
+        if not primary_stock:
+            continue
+
+        current_keys.add(primary_stock)
+        entry = history.get(primary_stock)
+
+        if entry:
+            first_seen = entry.get("first_seen", today_str)
+            last_seen = entry.get("last_seen", today_str)
+            days_active = entry.get("days_active", 1)
+            
+            if last_seen != today_str:
+                days_active += 1
+                history[primary_stock] = {
+                    "first_seen": first_seen,
+                    "last_seen": today_str,
+                    "days_active": days_active
+                }
+            
+            # Allow strictly 2 days (Day 1 & Day 2); suppress on Day 3+
+            if days_active < 3:
+                active_signals.append(s)
+            else:
+                print(f"Suppressing persistent alert for {primary_stock} (active for {days_active} days).")
+        else:
+            history[primary_stock] = {
+                "first_seen": today_str,
+                "last_seen": today_str,
+                "days_active": 1
+            }
+            active_signals.append(s)
+
+    stale_keys = [k for k in history if k not in current_keys]
+    for k in stale_keys:
+        del history[k]
+
+    try:
+        with open(history_file, "w") as f:
+            json.dump(history, f, indent=2)
+    except Exception as e:
+        print("Note updating catalyst history:", e)
+
+    return active_signals
+
+def get_market_movement_triggers():
+    """
+    Scans broad market indices (SPY, QQQ) to determine if a major market sell-off 
+    or major buy day is occurring (>= 1.5% intraday index shift).
+    """
+    triggers = []
+    for idx_sym in ["SPY", "QQQ"]:
+        try:
+            t = yf.Ticker(idx_sym)
+            fi = getattr(t, "fast_info", None)
+            pct = 0.0
+            if fi and fi.last_price and fi.previous_close:
+                pct = ((fi.last_price - fi.previous_close) / fi.previous_close) * 100.0
+            else:
+                h = t.history(period="2d")
+                if len(h) >= 2:
+                    p = float(h["Close"].iloc[-1])
+                    prev = float(h["Close"].iloc[-2])
+                    pct = ((p - prev) / prev) * 100.0
+
+            name = "S&P 500 (SPY)" if idx_sym == "SPY" else "Nasdaq-100 (QQQ)"
+            # Major sell-off threshold: index down >= 1.5%
+            if pct <= -1.50:
+                triggers.append({
+                    "type": "MARKET SELL-OFF",
+                    "name": name,
+                    "ticker": idx_sym,
+                    "is_sell": True,
+                    "reasons_encoded": urllib.parse.quote(json.dumps([
+                        f"Broad Index Decline: {name} is experiencing an intraday decline of {pct:.2f}%.",
+                        "Capital Preservation: Trimming extended high-beta positions reduces drawdown exposure during index-wide liquidity contractions.",
+                        "Rebalancing Inflow: Raising cash during systemic dips creates dry powder to accumulate undervalued core equities."
+                    ]))
+                })
+            # Major buy-day breakout threshold: index up >= 1.75%
+            elif pct >= 1.75:
+                triggers.append({
+                    "type": "MARKET BREAKOUT",
+                    "name": name,
+                    "ticker": idx_sym,
+                    "is_sell": False,
+                    "reasons_encoded": urllib.parse.quote(json.dumps([
+                        f"Macro Upside Momentum: {name} is advancing +{pct:.2f}% with broad-based market breadth.",
+                        "Risk-On Acceleration: Institutional liquidity is flowing into high-conviction growth and technology leaders.",
+                        "Momentum Follow-Through: Heavy accumulation supports continuous multi-week target expansions."
+                    ]))
+                })
+        except Exception:
+            pass
+    return triggers
+
 def get_catalysts():
     signals = []
     candidates_pool = []
     seen = set()
     scan_universe = HOLDINGS + WATCHLIST + BROAD_MARKET
     
+    # Check for systemic broad-market sell-offs or buy surges first
+    market_events = get_market_movement_triggers()
+
     for tkr in scan_universe:
         if "-USD" in tkr or tkr in seen:
             continue
@@ -488,8 +618,11 @@ def get_catalysts():
                 is_official_sell = rec in ["sell", "strong_sell", "underperform"]
                 is_target_inversion = upside <= -3.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
                 
-                if tkr in HOLDINGS and (is_official_sell or is_target_inversion):
-                    action_badge = "STRONG SELL" if rec == "strong_sell" else "SELL"
+                # Severe single-stock sell-off day: holding drops 4% or more on high volume
+                is_major_holding_selloff = tkr in HOLDINGS and day_pct <= -4.0 and vr >= 1.25
+                
+                if tkr in HOLDINGS and (is_official_sell or is_target_inversion or is_major_holding_selloff):
+                    action_badge = "STRONG SELL" if (rec == "strong_sell" or day_pct <= -5.0) else "SELL"
                     reasons_list = generate_reasons(tkr, "SELL", price, target, upside, rec)
                     reasons_encoded = urllib.parse.quote(json.dumps(reasons_list))
                     
@@ -509,7 +642,9 @@ def get_catalysts():
                     })
                     continue
                 
-                if rec in ["buy", "strong_buy"] and upside >= 18.0:
+                # Major buy-day or high-conviction breakout
+                is_major_buy_breakout = (day_pct >= 4.0 and vr >= 1.5) or (rec in ["buy", "strong_buy"] and upside >= 18.0)
+                if is_major_buy_breakout:
                     candidates_pool.append({
                         "ticker": tkr,
                         "name": c_name,
@@ -535,44 +670,42 @@ def get_catalysts():
             s["replacement_ticker"] = best_replacement["ticker"]
             s["replacement_name"] = best_replacement["name"]
             s["replacement_url"] = best_replacement["url"]
-            # Stripped "Holding: BUY," to show strictly company name and upside
             s["replacement_text"] = f"{best_replacement['name']} (+{best_replacement['upside']:.0f}% upside)"
             buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
             s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
 
+    # If broad market has triggered a major sell-off day, append systemic alert
+    if market_events and best_replacement:
+        for me in market_events:
+            me["replacement_ticker"] = best_replacement["ticker"]
+            me["replacement_name"] = best_replacement["name"]
+            me["replacement_url"] = best_replacement["url"]
+            me["replacement_text"] = f"{best_replacement['name']} (+{best_replacement['upside']:.0f}% upside)"
+            buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
+            me["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
+            signals.insert(0, me)
+
+    # If a major market-wide buy day is occurring and no holdings need selling, surface top buy candidate
     if not signals:
-        for c in candidates_pool[:4]:
-            if c["in_holdings"] and c["pullback"] >= 5.0:
+        for me in market_events:
+            if not me.get("is_sell") and best_replacement:
                 signals.append({
-                    "ticker": c["ticker"],
-                    "name": c["name"],
-                    "group": "Current Holding",
-                    "type": "BUY MORE",
-                    "upside_num": c["upside"],
-                    "vol_ratio": f"+{c['upside']:.0f}% Up",
-                    "pct": f"${c['price']:.2f}",
-                    "current_price": f"${c['price']:.2f}",
-                    "analysts": c["analysts"],
-                    "url": c["url"],
+                    "ticker": best_replacement["ticker"],
+                    "name": best_replacement["name"],
+                    "group": "Major Market Breakout",
+                    "type": "BUY NOW",
+                    "upside_num": best_replacement["upside"],
+                    "vol_ratio": f"+{best_replacement['upside']:.0f}% Up",
+                    "pct": f"${best_replacement['price']:.2f}",
+                    "current_price": f"${best_replacement['price']:.2f}",
+                    "analysts": best_replacement["analysts"],
+                    "url": best_replacement["url"],
+                    "reasons_encoded": urllib.parse.quote(json.dumps(generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"]))),
                     "is_sell": False
                 })
-            elif not c["in_holdings"] and ((c["vr"] >= 1.35 and c["day_pct"] > 0) or c["day_pct"] >= 2.0):
-                signals.append({
-                    "ticker": c["ticker"],
-                    "name": c["name"],
-                    "group": "Active Watchlist" if c["ticker"] in WATCHLIST else "Broad Market Opportunity",
-                    "type": "BREAKING OUT",
-                    "upside_num": c["upside"],
-                    "vol_ratio": f"+{c['upside']:.0f}% Up",
-                    "pct": f"${c['price']:.2f}",
-                    "current_price": f"${c['price']:.2f}",
-                    "analysts": c["analysts"],
-                    "url": c["url"],
-                    "is_sell": False
-                })
-                
-    signals.sort(key=lambda x: x["upside_num"], reverse=True)
-    return signals[:2]
+
+    signals.sort(key=lambda x: x.get("upside_num", 0), reverse=True)
+    return filter_active_catalysts(signals[:4])
 
 def get_quotes(tickers):
     out = []
@@ -676,32 +809,33 @@ MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
          <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
        </div>
      </div>
-   - METRIC CARDS CONTAINER: Render a grid spanning full width (margin-top: 14px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; width: 100%;).
-   - Card 1 (id="kpi-card-1", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+   - METRIC CARDS CONTAINER (ID="kpi-cards-grid", STYLE="display:none;margin-top:14px;margin-bottom:20px;grid-template-columns:repeat(4,1fr);gap:16px;width:100%;"):
+   - When toggleTabRow() is clicked, all 4 cards are set to display: block simultaneously.
+   - Card 1 (id="kpi-card-1", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
      Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Brokerage + Crypto + Full UC Benefits' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
-   - Card 2 (id="kpi-card-2", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+   - Card 2 (id="kpi-card-2", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
      Label 'TOTAL UC RETIREMENT & PENSION' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['uc_total_balance']}' (font-size: 26px, font-weight: 800, color: #0284c7). Sub-text: 'UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})' (font-size: 13px, color: #0284c7, font-weight: 700, margin-top: 4px).
-   - Card 3 (id="kpi-card-3", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+   - Card 3 (id="kpi-card-3", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
      Label 'ACTIVE BROKERAGE EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['brokerage_equity']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
-   - Card 4 (id="kpi-card-4", style="display:none;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
+   - Card 4 (id="kpi-card-4", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
      Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
 
-6. CATALYST RADAR BANNER (STREAMLINED FORMATTING):
-   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding 14px 22px, margin-bottom: 20px, border 3px solid #ef4444, background: #fff5f5, animation: pulse-alert 1.5s infinite, display: flex, align-items: center, justify-content: flex-start, border-radius: 14px).
-   - LEFT SIDE of banner: Render red badge '🚨 CATALYST ALERT' (background: #ef4444, color: #ffffff, font-weight: 700, padding 6px 12px, border-radius 6px, font-size: 13px, margin-right: 20px; flex-shrink: 0).
-   - CONTENT of banner:
+6. CATALYST RADAR BANNER (STREAMLINED, DYNAMIC & WRAPPING):
+   - IF 'catalysts' array IS EMPTY, DO NOT RENDER THE BANNER AT ALL.
+   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding: 14px 22px; margin-bottom: 20px; border: 3px solid #ef4444; background: #fff5f5; animation: pulse-alert 1.5s infinite; display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px; border-radius: 14px;).
+   - LEFT BADGE: <div style="display:inline-flex;align-items:center;background:#ef4444;color:#ffffff;font-weight:700;padding:6px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">🚨 CATALYST ALERT</div>
+   - ALERTS WRAPPER: <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;">
      - For EACH item in 'catalysts':
        - If item.is_sell is True:
-         Render a distinct pill: <div style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);'><span style='background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name</strong> <button onclick="openReasonsModal('item.name', 'SELL', 'item.reasons_encoded')" style='background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ 3 reasons why</button> <span style='margin-left:10px;padding-left:10px;border-left:1px solid #fca5a5;'>🔄 Buy: <a href='item.replacement_url' target='_blank' rel='noopener noreferrer' style='color:#15803d;font-weight:700;text-decoration:none;'>item.replacement_text ↗</a> <button onclick="openReasonsModal('item.replacement_name', 'BUY', 'item.replacement_reasons_encoded')" style='background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;margin-left:8px;text-decoration:underline;'>↗ 3 reasons why</button></span></div>.
-       - Otherwise (BUY MORE or BREAKING OUT):
-         Render: <a href='item.url' target='_blank' rel='noopener noreferrer' style='display:inline-flex;align-items:center;margin-right:16px;padding:6px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;text-decoration:none;color:#991b1b;font-weight:600;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.15s ease;'><span style='background:#ef4444;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:8px;'>item.type</span> <strong>item.name</strong> <span style='font-size:11px;margin-left:6px;opacity:0.75;'>↗ View Why</span></a>.
-   - CRITICAL TEXT RESTRICTIONS:
-     - DO NOT render 'Holding: BUY,' anywhere under the Buy section.
-     - The Buy section should read cleanly like: '🔄 Buy: Oracle (+81% upside) ↗ ↗ 3 reasons why'.
-     - DO NOT render price references like ':at $339.50' under Sell.
-     - DO NOT render 'TARGET INVERSION' or parenthetical target prices.
-     - Always use full company names (e.g. 'Apple', 'Valero Energy', 'Oracle').
-   - If 'catalysts' is empty, render nothing at all.
+         Render: <div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;"><span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">item.type</span> <strong>item.name</strong> <button onclick="openReasonsModal('item.name', 'SELL', 'item.reasons_encoded')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button> <span style="padding-left:10px;border-left:1px solid #fca5a5;display:inline-flex;align-items:center;gap:6px;">🔄 Buy: <a href="item.replacement_url" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">item.replacement_text ↗</a> <button onclick="openReasonsModal('item.replacement_name', 'BUY', 'item.replacement_reasons_encoded')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button></span></div>
+       - Otherwise (BUY NOW or BREAKING OUT):
+         Render: <div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;"><span style="background:#15803d;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">item.type</span> <strong>item.name</strong> <button onclick="openReasonsModal('item.name', 'BUY', 'item.reasons_encoded')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button></div>
+   - </div>
+   - CRITICAL RESTRICTIONS:
+     - DO NOT render 'Holding: BUY,' anywhere.
+     - DO NOT render ':at $xxx.xx' anywhere.
+     - DO NOT render 'TARGET INVERSION'.
+     - Always use full company names.
 
 7. THREE-COLUMN TOP LEVEL LAYOUT:
    - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
