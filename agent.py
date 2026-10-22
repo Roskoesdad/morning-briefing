@@ -463,22 +463,27 @@ def calculate_portfolio_summary():
         "plan_457b_pct": f"+{ret_data['plans']['457b']['unrealized_pct']:.2f}%"
     }
 
+def read_embedded_history():
+    """Reads persistent catalyst history from index.html so it survives GitHub Actions ephemeral runners."""
+    html_file = "index.html"
+    if os.path.exists(html_file):
+        try:
+            with open(html_file, "r", encoding="utf-8") as f:
+                content = f.read()
+                m = re.search(r'<script id="catalyst-tracker-data" type="application/json">\s*({.*?})\s*</script>', content, re.DOTALL)
+                if m:
+                    return json.loads(m.group(1))
+        except Exception as e:
+            print("Note reading embedded history:", e)
+    return {}
+
 def filter_active_catalysts(raw_signals):
     """
-    Suppresses signals once the primary asset being alerted has appeared for 2 days,
-    regardless of what replacement stock is paired with it.
+    Suppresses any stock that has appeared across 2 days.
+    History is embedded directly into index.html so state persists across runs.
     """
-    history_file = "catalyst_history.json"
-    history = {}
+    history = read_embedded_history()
     today_str = datetime.now().strftime("%Y-%m-%d")
-    
-    if os.path.exists(history_file):
-        try:
-            with open(history_file, "r") as f:
-                history = json.load(f)
-        except Exception:
-            history = {}
-
     current_keys = set()
     active_signals = []
 
@@ -503,7 +508,7 @@ def filter_active_catalysts(raw_signals):
                     "days_active": days_active
                 }
             
-            # Allow strictly 2 days (Day 1 & Day 2); suppress on Day 3+
+            # Allow strictly Day 1 and Day 2; suppress on Day 3+
             if days_active < 3:
                 active_signals.append(s)
             else:
@@ -516,23 +521,14 @@ def filter_active_catalysts(raw_signals):
             }
             active_signals.append(s)
 
-    stale_keys = [k for k in history if k not in current_keys]
+    # Clean up records for stocks no longer triggering
+    stale_keys = [k for k in list(history.keys()) if k not in current_keys]
     for k in stale_keys:
         del history[k]
 
-    try:
-        with open(history_file, "w") as f:
-            json.dump(history, f, indent=2)
-    except Exception as e:
-        print("Note updating catalyst history:", e)
-
-    return active_signals
+    return active_signals, history
 
 def get_market_movement_triggers():
-    """
-    Scans broad market indices (SPY, QQQ) to determine if a major market sell-off 
-    or major buy day is occurring (>= 1.5% intraday index shift).
-    """
     triggers = []
     for idx_sym in ["SPY", "QQQ"]:
         try:
@@ -549,7 +545,6 @@ def get_market_movement_triggers():
                     pct = ((p - prev) / prev) * 100.0
 
             name = "S&P 500 (SPY)" if idx_sym == "SPY" else "Nasdaq-100 (QQQ)"
-            # Major sell-off threshold: index down >= 1.5%
             if pct <= -1.50:
                 triggers.append({
                     "type": "MARKET SELL-OFF",
@@ -562,7 +557,6 @@ def get_market_movement_triggers():
                         "Rebalancing Inflow: Raising cash during systemic dips creates dry powder to accumulate undervalued core equities."
                     ]))
                 })
-            # Major buy-day breakout threshold: index up >= 1.75%
             elif pct >= 1.75:
                 triggers.append({
                     "type": "MARKET BREAKOUT",
@@ -585,7 +579,6 @@ def get_catalysts():
     seen = set()
     scan_universe = HOLDINGS + WATCHLIST + BROAD_MARKET
     
-    # Check for systemic broad-market sell-offs or buy surges first
     market_events = get_market_movement_triggers()
 
     for tkr in scan_universe:
@@ -617,8 +610,6 @@ def get_catalysts():
                 
                 is_official_sell = rec in ["sell", "strong_sell", "underperform"]
                 is_target_inversion = upside <= -3.0 or (pullback >= 25.0 and day_pct <= -2.5 and vr >= 1.4)
-                
-                # Severe single-stock sell-off day: holding drops 4% or more on high volume
                 is_major_holding_selloff = tkr in HOLDINGS and day_pct <= -4.0 and vr >= 1.25
                 
                 if tkr in HOLDINGS and (is_official_sell or is_target_inversion or is_major_holding_selloff):
@@ -642,7 +633,6 @@ def get_catalysts():
                     })
                     continue
                 
-                # Major buy-day or high-conviction breakout
                 is_major_buy_breakout = (day_pct >= 4.0 and vr >= 1.5) or (rec in ["buy", "strong_buy"] and upside >= 18.0)
                 if is_major_buy_breakout:
                     candidates_pool.append({
@@ -674,7 +664,6 @@ def get_catalysts():
             buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
             s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
 
-    # If broad market has triggered a major sell-off day, append systemic alert
     if market_events and best_replacement:
         for me in market_events:
             me["replacement_ticker"] = best_replacement["ticker"]
@@ -685,7 +674,6 @@ def get_catalysts():
             me["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
             signals.insert(0, me)
 
-    # If a major market-wide buy day is occurring and no holdings need selling, surface top buy candidate
     if not signals:
         for me in market_events:
             if not me.get("is_sell") and best_replacement:
@@ -749,11 +737,36 @@ def get_candidate_models():
             candidates.append(fallback)
     return candidates
 
+def render_news_items(items):
+    out = ""
+    for it in items:
+        img_html = f'<img src="{it["image"]}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0;margin-right:12px;" onerror="this.src=\'{T_LOGO}\'" />' if it.get("image") else ""
+        out += f"""<a href="{it['link']}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:#1e293b;transition:background 0.15s ease;">
+          {img_html}
+          <span style="font-size:13px;font-weight:600;line-height:1.4;">{it['title']}</span>
+        </a>"""
+    return out
+
+def render_stock_list(quotes):
+    out = ""
+    for q in quotes:
+        color = "#15803d" if q["positive"] else "#dc2626"
+        badge_bg = "#dcfce7" if q["positive"] else "#fee2e2"
+        out += f"""<a href="{q['url']}" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#0f172a;">{q['name']}</div>
+            <div style="font-size:11px;color:#64748b;">{q['ticker']}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:13px;color:#0f172a;">{q['price']}</div>
+            <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;color:{color};background:{badge_bg};margin-top:2px;">{q['pct']}</span>
+          </div>
+        </a>"""
+    return out
+
 def run_agent():
     print("Calculating portfolio metrics and syncing market data...")
     summary = calculate_portfolio_summary()
-
-    day_color = "#00c805" if summary["is_day_positive"] else "#ef4444"
 
     ars = fetch_rss("https://feeds.arstechnica.com/arstechnica/technology-lab", 6, "ai")[:4]
     decoder = fetch_rss("https://the-decoder.com/feed/", 6, "ai")[:4]
@@ -761,120 +774,242 @@ def run_agent():
     tech = (ars + decoder + tc)[:10]
 
     padres, mlb = fetch_padres_stories()
-    payload = {
-        "portfolio_summary": summary,
-        "catalysts": get_catalysts(), "padres": padres, "mlb": mlb,
-        "world": fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5),
-        "sd": fetch_fox5(), "ai": tech,
-        "holdings": get_quotes(HOLDINGS), "watchlist": get_quotes(WATCHLIST)
-    }
+    world_news = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
+    sd_news = fetch_fox5()
+    holdings_quotes = get_quotes(HOLDINGS)
+    watchlist_quotes = get_quotes(WATCHLIST)
 
-    instruction = f"""Generate a complete, single-page HTML executive briefing dashboard.
-Data payload JSON:
-{json.dumps(payload)}
+    catalysts, history_state = get_catalysts()
+    day_color = "#00c805" if summary["is_day_positive"] else "#ef4444"
 
-MANDATORY DESIGN AND STRUCTURE REQUIREMENTS:
-1. NO TABS FOR LOWER PANELS. Display news, sports, weather, and portfolios in open, simultaneous side-by-side split panels.
-2. FULL-WIDTH LAYOUT: width 98vw; max-width: 1820px; margin: 0 auto; page background #f1f5f9; cards #ffffff with 1px solid #e2e8f0, border-radius 12px, padding 18px. Start at top edge.
-3. CSS KEYFRAME: @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
+    # Pre-render deterministic HTML components to prevent LLM omissions
+    catalyst_banner_html = ""
+    if catalysts:
+        items_html = ""
+        for item in catalysts:
+            if item.get("is_sell"):
+                items_html += f"""<div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;">
+                  <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">{item['type']}</span>
+                  <strong>{item['name']}</strong>
+                  <button onclick="openReasonsModal('{item['name']}', 'SELL', '{item['reasons_encoded']}')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+                  <span style="padding-left:10px;border-left:1px solid #fca5a5;display:inline-flex;align-items:center;gap:6px;">
+                    🔄 Buy: <a href="{item.get('replacement_url', '#')}" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">{item.get('replacement_text', '')} ↗</a>
+                    <button onclick="openReasonsModal('{item.get('replacement_name', '')}', 'BUY', '{item.get('replacement_reasons_encoded', '')}')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+                  </span>
+                </div>"""
+            else:
+                items_html += f"""<div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;">
+                  <span style="background:#15803d;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">{item['type']}</span>
+                  <strong>{item['name']}</strong>
+                  <button onclick="openReasonsModal('{item['name']}', 'BUY', '{item['reasons_encoded']}')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+                </div>"""
+        
+        catalyst_banner_html = f"""<div style="margin-bottom:20px;padding:14px 22px;border:3px solid #ef4444;background:#fff5f5;animation:pulse-alert 1.5s infinite;display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:12px;border-radius:14px;">
+          <div style="display:inline-flex;align-items:center;background:#ef4444;color:#ffffff;font-weight:700;padding:6px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">🚨 CATALYST ALERT</div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;">{items_html}</div>
+        </div>"""
 
-4. MODAL DIALOG INJECTION (FOR 3 REASONS WHY):
-   - Immediately before closing </body>, include this hidden modal HTML structure:
-     <div id="reasons-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px);">
-       <div style="background:#ffffff;border-radius:14px;padding:24px;max-width:540px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);position:relative;border:1px solid #e2e8f0;">
-         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f1f5f9;padding-bottom:12px;margin-bottom:14px;">
-           <h3 id="modal-title" style="margin:0;font-size:18px;color:#0f172a;font-weight:800;"></h3>
-           <button onclick="closeReasonsModal()" style="background:transparent;border:none;font-size:20px;cursor:pointer;color:#64748b;font-weight:700;">✕</button>
-         </div>
-         <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">💡 Key Actionable Reasons:</div>
-         <ul id="modal-reasons-list" style="padding-left:20px;margin-top:0;margin-bottom:18px;font-size:13px;"></ul>
-         <div style="display:flex;justify-content:flex-end;">
-           <button onclick="closeReasonsModal()" style="background:#0f172a;color:#ffffff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;">Understood</button>
-         </div>
-       </div>
-     </div>
+    padres_html = render_news_items(padres)
+    mlb_html = render_news_items(mlb)
+    world_html = render_news_items(world_news)
+    sd_html = render_news_items(sd_news)
+    tech_html = render_news_items(tech)
+    holdings_html = render_stock_list(holdings_quotes)
+    watchlist_html = render_stock_list(watchlist_quotes)
 
-5. CENTERED ON-DEMAND EXECUTIVE WEALTH HEADER:
-   - Directly below opening <body>, render the top wealth trigger bar CENTERED on the page (display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin: 10px auto 20px auto;).
-   - TRIGGER CONTAINER:
-     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;">
-       <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:inline-flex;align-items:center;gap:8px;">
-         <span>💼 Executive Wealth Summary</span>
-         <span style="font-size:11px;color:#64748b;font-weight:500;">(Click to view tabs)</span>
-       </button>
-       <div id="kpi-tab-bar" style="display:none;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
-         <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
-         <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
-         <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
-         <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
-       </div>
-     </div>
-   - METRIC CARDS CONTAINER (ID="kpi-cards-grid", STYLE="display:none;margin-top:14px;margin-bottom:20px;grid-template-columns:repeat(4,1fr);gap:16px;width:100%;"):
-   - When toggleTabRow() is clicked, all 4 cards are set to display: block simultaneously.
-   - Card 1 (id="kpi-card-1", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
-     Label 'TOTAL LIQUID NET WORTH' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['total_net_worth']}' (font-size: 26px, font-weight: 800, color: #0f172a). Sub-text: 'Brokerage + Crypto + Full UC Benefits' (font-size: 13px, color: #64748b, font-weight: 500, margin-top: 4px).
-   - Card 2 (id="kpi-card-2", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
-     Label 'TOTAL UC RETIREMENT & PENSION' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['uc_total_balance']}' (font-size: 26px, font-weight: 800, color: #0284c7). Sub-text: 'UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})' (font-size: 13px, color: #0284c7, font-weight: 700, margin-top: 4px).
-   - Card 3 (id="kpi-card-3", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
-     Label 'ACTIVE BROKERAGE EQUITY' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['brokerage_equity']}' (font-size: 26px, font-weight: 800, color: #059669). Sub-text: '{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)' (font-size: 13px, color: #059669, font-weight: 700, margin-top: 4px).
-   - Card 4 (id="kpi-card-4", style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;"):
-     Label 'TODAY\\'S BROKERAGE GAIN' (font-size: 11px, font-weight: 700, color: #64748b, text-transform: uppercase, letter-spacing: 0.5px). Main value '{summary['day_dollar']}' (font-size: 26px, font-weight: 800, color: {day_color}). Sub-text: '{summary['day_pct']} Intraday' (font-size: 13px, color: {day_color}, font-weight: 700, margin-top: 4px).
+    # Embed persistent tracker metadata to enforce the strict 2-day rule in CI/CD
+    history_embed_tag = f'<script id="catalyst-tracker-data" type="application/json">\n{json.dumps(history_state, indent=2)}\n</script>'
 
-6. CATALYST RADAR BANNER (STREAMLINED, DYNAMIC & WRAPPING):
-   - IF 'catalysts' array IS EMPTY, DO NOT RENDER THE BANNER AT ALL.
-   - If 'catalysts' array is non-empty, render an alert container spanning full width above the three columns (padding: 14px 22px; margin-bottom: 20px; border: 3px solid #ef4444; background: #fff5f5; animation: pulse-alert 1.5s infinite; display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px; border-radius: 14px;).
-   - LEFT BADGE: <div style="display:inline-flex;align-items:center;background:#ef4444;color:#ffffff;font-weight:700;padding:6px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">🚨 CATALYST ALERT</div>
-   - ALERTS WRAPPER: <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;">
-     - For EACH item in 'catalysts':
-       - If item.is_sell is True:
-         Render: <div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;"><span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">item.type</span> <strong>item.name</strong> <button onclick="openReasonsModal('item.name', 'SELL', 'item.reasons_encoded')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button> <span style="padding-left:10px;border-left:1px solid #fca5a5;display:inline-flex;align-items:center;gap:6px;">🔄 Buy: <a href="item.replacement_url" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">item.replacement_text ↗</a> <button onclick="openReasonsModal('item.replacement_name', 'BUY', 'item.replacement_reasons_encoded')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button></span></div>
-       - Otherwise (BUY NOW or BREAKING OUT):
-         Render: <div style="display:inline-flex;align-items:center;padding:8px 14px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-wrap:wrap;gap:8px;"><span style="background:#15803d;color:#ffffff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;">item.type</span> <strong>item.name</strong> <button onclick="openReasonsModal('item.name', 'BUY', 'item.reasons_encoded')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button></div>
-   - </div>
-   - CRITICAL RESTRICTIONS:
-     - DO NOT render 'Holding: BUY,' anywhere.
-     - DO NOT render ':at $xxx.xx' anywhere.
-     - DO NOT render 'TARGET INVERSION'.
-     - Always use full company names.
+    full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Executive Briefing Dashboard</title>
+  <style>
+    * {{ box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}
+    body {{ margin: 0; background-color: #f1f5f9; color: #0f172a; padding: 16px; }}
+    @keyframes pulse-alert {{ 0%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} 50%{{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);}} 100%{{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);}} }}
+    .card {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }}
+    .grid-2 {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
+  </style>
+</head>
+<body>
 
-7. THREE-COLUMN TOP LEVEL LAYOUT:
-   - LEFT (320px width, align-self: flex-start): Weather card. Must have <h2 id='weather-card-title' style='font-size:18px;margin-top:0;margin-bottom:12px;'>Weather 14-Day</h2> followed by <div id='weather-forecast-list'>Loading forecast...</div>. Sized to fill the left edge and reach downward flush with Executive News.
-   - CENTER (flex: 1): Top card 'Sports Desk: San Diego Padres & MLB' with 2 simultaneous side-by-side columns (left: Padres with <div id='padres-live-box'></div> and 5 Padres links with 46x46 SD logo; right: 5 MLB links with 46x46 MLB logo). Middle card 'Executive News (World & San Diego)' with 2 simultaneous side-by-side columns (left: Top 5 World Headlines; right: Top 5 FOX 5 San Diego Local News with story image thumbnails). Bottom card 'AI, Big Tech & Industry Breakthroughs' (2-column card grid of exactly 10 items from 'ai': 4 from Ars Technica, 4 from The Decoder, 2 from TechCrunch, each with 50x50 thumbnail and clickable title).
-   - RIGHT (350px width):
-     - Top card: 'Institutional UC Retirement & Pension' with clean white background, border-radius 12px, border 1px solid #e2e8f0, padding 16px, margin-bottom 16px. Inside render:
-       - Header: <div style='font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;'><span>🏛️ UC Retirement & Pension</span><span style='font-size:11px;font-weight:600;color:#64748b;'>As of {summary['retirement_as_of']}</span></div>
-       - UCRP Pension Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UCRP Pension (2013 Tier)</div><div style='font-size:11px;color:#64748b;'>{summary['ucrp_service']} Service Credit</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['ucrp_balance']}</div><div style='font-size:11px;color:#0284c7;font-weight:700;'>Defined Benefit</div></div></div>
-       - 403(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 403(B) (Pre-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_403b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div></div></div>
-       - 457(b) Row: <div style='padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;'><div><div style='font-weight:700;font-size:13px;color:#1e293b;'>UC 457(B) (Roth After-Tax)</div><div style='font-size:11px;color:#64748b;'>UC Pathway 2040</div></div><div style='text-align:right;'><div style='font-weight:800;font-size:14px;color:#0f172a;'>{summary['plan_457b_bal']}</div><div style='font-size:11px;color:#059669;font-weight:700;'>{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div></div></div>
-       - Footer Row: <div style='margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;'><span><strong>Total Institutional:</strong> {summary['uc_total_balance']}</span><span style='font-weight:700;color:#0284c7;'>Health & Welf: {summary['ucrp_service']}</span></div>
-     - Middle card 'Portfolio Pulse' with NO INTERNAL SCROLLBAR (no max-height, no overflow-y: auto). Each holding item MUST be an active clickable hyperlink <a href='url' target='_blank' rel='noopener noreferrer' style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;'>. Show full company name, price, and % badge. Directly below sits 'Watchlist Catalyst Radar' card with the same clickable style.
+  <!-- Modal Dialog -->
+  <div id="reasons-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px);">
+    <div style="background:#ffffff;border-radius:14px;padding:24px;max-width:540px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);position:relative;border:1px solid #e2e8f0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f1f5f9;padding-bottom:12px;margin-bottom:14px;">
+        <h3 id="modal-title" style="margin:0;font-size:18px;color:#0f172a;font-weight:800;"></h3>
+        <button onclick="closeReasonsModal()" style="background:transparent;border:none;font-size:20px;cursor:pointer;color:#64748b;font-weight:700;">✕</button>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">💡 Key Actionable Reasons:</div>
+      <ul id="modal-reasons-list" style="padding-left:20px;margin-top:0;margin-bottom:18px;font-size:13px;"></ul>
+      <div style="display:flex;justify-content:flex-end;">
+        <button onclick="closeReasonsModal()" style="background:#0f172a;color:#ffffff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;">Understood</button>
+      </div>
+    </div>
+  </div>
 
-8. Insert marker [[WEATHER_AND_PADRES_JS]] immediately before </body>.
-9. Return ONLY clean, valid raw HTML starting with <!DOCTYPE html> and ending with </html>. Do not include markdown code block backticks."""
+  <!-- Centered Privacy Executive Wealth Header -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;margin:10px auto 20px auto;">
+    <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:inline-flex;align-items:center;gap:8px;">
+      <span>💼 Executive Wealth Summary</span>
+      <span style="font-size:11px;color:#64748b;font-weight:500;">(Click to view tabs)</span>
+    </button>
+    <div id="kpi-tab-bar" style="display:none;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
+      <button onclick="toggleKpiCard(1)" style="background:#0f172a;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total Liquid</button>
+      <button onclick="toggleKpiCard(2)" style="background:#0284c7;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Total UC Retirement</button>
+      <button onclick="toggleKpiCard(3)" style="background:#059669;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Active Brokerage</button>
+      <button onclick="toggleKpiCard(4)" style="background:#475569;color:#ffffff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Today's Brokerage</button>
+    </div>
+  </div>
 
-    models = get_candidate_models()
-    resp = None
-    for m in models:
-        for attempt in range(2):
-            try:
-                print(f"Generating with {m}...")
-                resp = client.models.generate_content(model=m, contents=instruction)
-                if resp and resp.text:
-                    break
-            except Exception as e:
-                print(f"Notice on {m}: {e}")
-                time.sleep(3)
-        if resp and resp.text:
-            break
+  <!-- Metric Cards Grid (Reveals All 4 Simultaneously) -->
+  <div id="kpi-cards-grid" style="display:none;margin-top:14px;margin-bottom:20px;grid-template-columns:repeat(4,1fr);gap:16px;width:100%;">
+    <div id="kpi-card-1" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL LIQUID NET WORTH</div>
+      <div style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">{summary['total_net_worth']}</div>
+      <div style="font-size:13px;color:#64748b;font-weight:500;margin-top:4px;">Brokerage + Crypto + Full UC Benefits</div>
+    </div>
+    <div id="kpi-card-2" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL UC RETIREMENT & PENSION</div>
+      <div style="font-size:26px;font-weight:800;color:#0284c7;margin-top:4px;">{summary['uc_total_balance']}</div>
+      <div style="font-size:13px;color:#0284c7;font-weight:700;margin-top:4px;">UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})</div>
+    </div>
+    <div id="kpi-card-3" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">ACTIVE BROKERAGE EQUITY</div>
+      <div style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">{summary['brokerage_equity']}</div>
+      <div style="font-size:13px;color:#059669;font-weight:700;margin-top:4px;">{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)</div>
+    </div>
+    <div id="kpi-card-4" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TODAY'S BROKERAGE GAIN</div>
+      <div style="font-size:26px;font-weight:800;color:{day_color};margin-top:4px;">{summary['day_dollar']}</div>
+      <div style="font-size:13px;color:{day_color};font-weight:700;margin-top:4px;">{summary['day_pct']} Intraday</div>
+    </div>
+  </div>
 
-    if not resp or not resp.text:
-        raise RuntimeError("Generation failed across all models.")
+  <!-- Catalyst Alert Banner -->
+  {catalyst_banner_html}
 
-    html = resp.text.replace("```html", "").replace("```", "").strip()
-    js_tag = f"<script>\n{DEFAULT_JS}\n</script>"
-    html = html.replace("[[WEATHER_AND_PADRES_JS]]", js_tag) if "[[WEATHER_AND_PADRES_JS]]" in html else (html.replace("</body>", f"{js_tag}</body>") if "</body>" in html else html + js_tag)
+  <!-- 3-Column Executive Dashboard Body -->
+  <div style="display:flex;gap:20px;width:100%;align-items:flex-start;">
+    
+    <!-- LEFT COLUMN: Weather -->
+    <div style="width:320px;flex-shrink:0;">
+      <div class="card">
+        <h2 id="weather-card-title" style="font-size:18px;margin-top:0;margin-bottom:12px;">Weather 14-Day</h2>
+        <div id="weather-forecast-list">Loading forecast...</div>
+      </div>
+    </div>
+
+    <!-- CENTER COLUMN: Live Sports & Executive News -->
+    <div style="flex:1;">
+      <!-- Sports Desk -->
+      <div class="card">
+        <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">⚾ Sports Desk: San Diego Padres & MLB</h2>
+        <div class="grid-2">
+          <div>
+            <div id="padres-live-box" style="margin-bottom:10px;font-size:13px;color:#475569;font-weight:600;"></div>
+            {padres_html}
+          </div>
+          <div>
+            <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">MLB League Stories</div>
+            {mlb_html}
+          </div>
+        </div>
+      </div>
+
+      <!-- Executive News -->
+      <div class="card">
+        <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">🌐 Executive News (World & San Diego)</h2>
+        <div class="grid-2">
+          <div>
+            <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">BBC World News</div>
+            {world_html}
+          </div>
+          <div>
+            <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;">FOX 5 San Diego Local</div>
+            {sd_html}
+          </div>
+        </div>
+      </div>
+
+      <!-- AI, Tech & Breakthroughs -->
+      <div class="card">
+        <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">🤖 AI, Big Tech & Industry Breakthroughs</h2>
+        <div>{tech_html}</div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Retirement Tracker & Portfolios -->
+    <div style="width:350px;flex-shrink:0;">
+      <!-- UC Retirement Card -->
+      <div class="card">
+        <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+          <span>🏛️ UC Retirement & Pension</span>
+          <span style="font-size:11px;font-weight:600;color:#64748b;">As of {summary['retirement_as_of']}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#1e293b;">UCRP Pension (2013 Tier)</div>
+            <div style="font-size:11px;color:#64748b;">{summary['ucrp_service']} Service Credit</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:800;font-size:14px;color:#0f172a;">{summary['ucrp_balance']}</div>
+            <div style="font-size:11px;color:#0284c7;font-weight:700;">Defined Benefit</div>
+          </div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#1e293b;">UC 403(B) (Pre-Tax)</div>
+            <div style="font-size:11px;color:#64748b;">UC Pathway 2040</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:800;font-size:14px;color:#0f172a;">{summary['plan_403b_bal']}</div>
+            <div style="font-size:11px;color:#059669;font-weight:700;">{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div>
+          </div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#1e293b;">UC 457(B) (Roth After-Tax)</div>
+            <div style="font-size:11px;color:#64748b;">UC Pathway 2040</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:800;font-size:14px;color:#0f172a;">{summary['plan_457b_bal']}</div>
+            <div style="font-size:11px;color:#059669;font-weight:700;">{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#334155;">
+          <span><strong>Total Institutional:</strong> {summary['uc_total_balance']}</span>
+          <span style="font-weight:700;color:#0284c7;">Health & Welf: {summary['ucrp_service']}</span>
+        </div>
+      </div>
+
+      <!-- Active Portfolio Holdings -->
+      <div class="card">
+        <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</h2>
+        <div>{holdings_html}</div>
+      </div>
+
+      <!-- Watchlist -->
+      <div class="card">
+        <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">🎯 Watchlist Catalyst Radar</h2>
+        <div>{watchlist_html}</div>
+      </div>
+    </div>
+
+  </div>
+
+  {history_embed_tag}
+  <script>
+    {DEFAULT_JS}
+  </script>
+</body>
+</html>"""
+
     with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(full_html)
     print("Dashboard build complete.")
 
 if __name__ == "__main__":
