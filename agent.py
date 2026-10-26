@@ -53,7 +53,7 @@ PORTFOLIO_CONFIG = {
                 "balance": 136465.10,
                 "contributions": 99282.42,
                 "interest": 37182.68,
-                "base_service_credit": 12.6114,
+                "base_service_credit": 12.61,
                 "start_date": "02/2014"
             },
             "403b": {
@@ -231,6 +231,17 @@ function toggleKpiCard(idx){
   card.style.display = isHidden ? 'block' : 'none';
 }
 
+function updateDailyServiceCounter(){
+  const el = document.getElementById('years-of-service-val');
+  if(!el) return;
+  const benchmark = new Date('2026-10-21T00:00:00');
+  const now = new Date();
+  const diffTime = Math.max(0, now - benchmark);
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const currentCounter = (12.61 + (diffDays * 0.01)).toFixed(2);
+  el.innerText = currentCounter;
+}
+
 async function updateWeather(){
   const c=document.getElementById('weather-forecast-list');if(!c)return;
   try{
@@ -293,7 +304,7 @@ async function updatePadres(){
     else b.innerHTML='⚾ <strong>Upcoming:</strong> '+a+' @ '+h;
   }catch(e){b.innerHTML='Padres live feed standby.';}
 }
-updateWeather();updatePadres();setInterval(updatePadres,30000);"""
+updateWeather();updatePadres();updateDailyServiceCounter();setInterval(updatePadres,30000);"""
 
 def extract_thumb(e, cat="general"):
     for k in ["media_content", "enclosures"]:
@@ -444,10 +455,11 @@ def calculate_portfolio_summary():
 
     ucrp = ret_data["plans"]["ucrp"]
 
+    # Daily Incrementing Counter: steps up by exactly +0.01 per calendar day
     bench_date = datetime.strptime(ret_data.get("benchmark_date", "2026-10-21"), "%Y-%m-%d").date()
     today = date.today()
     days_elapsed = max(0, (today - bench_date).days)
-    dynamic_service = ucrp["base_service_credit"] + (days_elapsed / 365.25)
+    dynamic_service = 12.61 + (days_elapsed * 0.01)
 
     return {
         "total_net_worth": f"${total_net_worth:,.2f}",
@@ -646,9 +658,7 @@ def get_catalysts():
             s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
 
     # 3. Add Standalone "BUY NOW" Catalysts (Independent of Sells)
-    # If a high-probability breakout or government contract winner emerges, prompt a BUY alert directly
     for top_buy in candidates_pool[:2]:
-        # Only add standalone buy if it's not already linked as a replacement sell pair
         if not any(s.get("replacement_ticker") == top_buy["ticker"] for s in signals):
             badge = "BUY NOW" if top_buy.get("is_surge") else "STRONG BUY"
             buy_reasons = generate_reasons(top_buy["ticker"], "BUY", top_buy["price"], top_buy["target"], top_buy["upside"], top_buy["rec"])
@@ -761,7 +771,6 @@ def run_agent():
         items_html = ""
         for item in catalysts:
             if item.get("is_sell"):
-                # SELL ALERT with paired replacement
                 items_html += f"""<div class="alert-pill">
                   <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;">{item['type']}</span>
                   <strong>{item['name']}</strong>
@@ -772,7 +781,6 @@ def run_agent():
                   </span>
                 </div>"""
             else:
-                # STANDALONE BUY ALERT (Breakout, contract momentum, high secular upside)
                 items_html += f"""<div class="alert-pill" style="border-color:#bbf7d0;background:#f0fdf4;">
                   <span style="background:#15803d;color:#ffffff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;">{item['type']}</span>
                   <strong style="color:#14532d;">{item['name']}</strong>
@@ -1004,10 +1012,10 @@ def run_agent():
             <div style="font-size:11px;color:#059669;font-weight:700;">{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div>
           </div>
         </div>
-        <!-- Enlarged Footer Row with "Total:" and dynamic "Years of Service:" counter -->
+        <!-- Enlarged Footer Row with "Total:" and dynamic "Years of Service:" counter with target span -->
         <div style="margin-top:12px;padding:12px 14px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:13.5px;color:#1e293b;border:1px solid #e2e8f0;">
           <span><strong>Total:</strong> {summary['uc_total_balance']}</span>
-          <span style="font-weight:800;color:#0284c7;font-size:14px;">Years of Service: {summary['service_counter_display']}</span>
+          <span style="font-weight:800;color:#0284c7;font-size:14px;">Years of Service: <span id="years-of-service-val">{summary['service_counter_display']}</span></span>
         </div>
       </div>
 
