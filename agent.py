@@ -6,6 +6,44 @@ from google import genai
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
+# Official UCPath 2026-2027 Biweekly Payday Calendar (Every Other Wednesday)
+UCPATH_PAYDAYS = [
+    # 2026 Q4
+    "2026-10-21",  # Baseline Statement Benchmark
+    "2026-11-04",
+    "2026-11-18",
+    "2026-12-02",
+    "2026-12-16",
+    "2026-12-30",
+    # 2027 Schedule
+    "2027-01-13",
+    "2027-01-27",
+    "2027-02-10",
+    "2027-02-24",
+    "2027-03-10",
+    "2027-03-24",
+    "2027-04-07",
+    "2027-04-21",
+    "2027-05-05",
+    "2027-05-19",
+    "2027-06-02",
+    "2027-06-16",
+    "2027-06-30",
+    "2027-07-14",
+    "2027-07-28",
+    "2027-08-11",
+    "2027-08-25",
+    "2027-09-08",
+    "2027-09-22",
+    "2027-10-06",
+    "2027-10-20",
+    "2027-11-03",
+    "2027-11-17",
+    "2027-12-01",
+    "2027-12-15",
+    "2027-12-29"
+]
+
 # Portfolio Configuration, Exact Holdings & Institutional UC Retirement
 PORTFOLIO_CONFIG = {
     "net_deposits": 6654.74,
@@ -150,7 +188,7 @@ COMPANY_NAMES = {
 
 HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["crypto"].keys())
 
-# Active Watchlist (High secular contract / infrastructure candidates)
+# Active Watchlist
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 
 # Broad-Market Scanner (S&P 500 & Nasdaq Leaders)
@@ -242,6 +280,42 @@ function updateDailyServiceCounter(){
   el.innerText = currentCounter;
 }
 
+function updateBiweeklyWealthAccrual(){
+  // Official UCPath Payday Schedule from 2026 Calendar
+  const paydays = [
+    '2026-10-21', '2026-11-04', '2026-11-18', '2026-12-02', '2026-12-16', '2026-12-30',
+    '2027-01-13', '2027-01-27', '2027-02-10', '2027-02-24', '2027-03-10', '2027-03-24'
+  ];
+  
+  const todayStr = new Date().toISOString().split('T')[0];
+  let accruedPaychecks = 0;
+  for(let i = 1; i < paydays.length; i++){
+    if(todayStr >= paydays[i]){
+      accruedPaychecks++;
+    }
+  }
+  
+  if(accruedPaychecks > 0){
+    const addedRetirement = accruedPaychecks * 550.00;
+    const baseRetirement = 172552.79;
+    const currentRetirement = baseRetirement + addedRetirement;
+    
+    const retCardVal = document.getElementById('kpi-ret-val');
+    if(retCardVal) retCardVal.innerText = '$' + currentRetirement.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    
+    const retFooterVal = document.getElementById('footer-total-retirement');
+    if(retFooterVal) retFooterVal.innerText = '$' + currentRetirement.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    
+    const netWorthVal = document.getElementById('kpi-networth-val');
+    const brokCardVal = document.getElementById('kpi-brokerage-val');
+    if(netWorthVal && brokCardVal){
+      const brokNum = parseFloat(brokCardVal.innerText.replace(/[^0-9.-]+/g, '')) || 0.0;
+      const totalNW = brokNum + currentRetirement;
+      netWorthVal.innerText = '$' + totalNW.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+  }
+}
+
 async function updateWeather(){
   const c=document.getElementById('weather-forecast-list');if(!c)return;
   try{
@@ -304,7 +378,7 @@ async function updatePadres(){
     else b.innerHTML='⚾ <strong>Upcoming:</strong> '+a+' @ '+h;
   }catch(e){b.innerHTML='Padres live feed standby.';}
 }
-updateWeather();updatePadres();updateDailyServiceCounter();setInterval(updatePadres,30000);"""
+updateWeather();updatePadres();updateDailyServiceCounter();updateBiweeklyWealthAccrual();setInterval(updatePadres,30000);"""
 
 def extract_thumb(e, cat="general"):
     for k in ["media_content", "enclosures"]:
@@ -412,7 +486,7 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
     ]
 
 def calculate_portfolio_summary():
-    """Calculates all-time returns, day gains, dynamic service credit counter, and total valuation."""
+    """Calculates all-time returns, day gains, dynamic service credit, and exact UCPath calendar accrual."""
     total_brokerage_equity = PORTFOLIO_CONFIG["cash"]
     total_prev_close_equity = PORTFOLIO_CONFIG["cash"]
 
@@ -450,15 +524,26 @@ def calculate_portfolio_summary():
     day_pct = (day_dollar / total_prev_close_equity) * 100.0 if total_prev_close_equity else 0.0
 
     ret_data = PORTFOLIO_CONFIG["retirement"]
-    total_uc_retirement = ret_data["combined_balance"]
-    total_net_worth = total_brokerage_equity + total_uc_retirement
+    today_str = date.today().strftime("%Y-%m-%d")
+    
+    # Count official paydays passed since benchmark date (Oct 21, 2026)
+    paychecks_passed = sum(1 for p in UCPATH_PAYDAYS[1:] if today_str >= p)
+    
+    accrued_403b = paychecks_passed * ret_data["plans"]["403b"]["per_paycheck"]
+    accrued_457b = paychecks_passed * ret_data["plans"]["457b"]["per_paycheck"]
+    total_accrued_dc = accrued_403b + accrued_457b
 
+    current_403b_bal = ret_data["plans"]["403b"]["balance"] + accrued_403b
+    current_457b_bal = ret_data["plans"]["457b"]["balance"] + accrued_457b
+    current_dc_balance = ret_data["dc_plans_balance"] + total_accrued_dc
+    current_total_uc_retirement = ret_data["combined_balance"] + total_accrued_dc
+
+    total_net_worth = total_brokerage_equity + current_total_uc_retirement
     ucrp = ret_data["plans"]["ucrp"]
 
     # Daily Incrementing Counter: steps up by exactly +0.01 per calendar day
     bench_date = datetime.strptime(ret_data.get("benchmark_date", "2026-10-21"), "%Y-%m-%d").date()
-    today = date.today()
-    days_elapsed = max(0, (today - bench_date).days)
+    days_elapsed = max(0, (date.today() - bench_date).days)
     dynamic_service = 12.61 + (days_elapsed * 0.01)
 
     return {
@@ -470,16 +555,16 @@ def calculate_portfolio_summary():
         "day_dollar": f"+${day_dollar:,.2f}" if day_dollar >= 0 else f"-${abs(day_dollar):,.2f}",
         "day_pct": f"{day_pct:+.2f}%",
         "is_day_positive": day_dollar >= 0,
-        "uc_total_balance": f"${total_uc_retirement:,.2f}",
+        "uc_total_balance": f"${current_total_uc_retirement:,.2f}",
         "ucrp_balance": f"${ucrp['balance']:,.2f}",
         "ucrp_service": f"{dynamic_service:.2f} yrs",
         "service_counter_display": f"{dynamic_service:.2f}",
-        "uc_dc_balance": f"${ret_data['dc_plans_balance']:,.2f}",
+        "uc_dc_balance": f"${current_dc_balance:,.2f}",
         "retirement_as_of": ret_data["as_of"],
-        "plan_403b_bal": f"${ret_data['plans']['403b']['balance']:,.2f}",
+        "plan_403b_bal": f"${current_403b_bal:,.2f}",
         "plan_403b_gain": f"+${ret_data['plans']['403b']['unrealized_gain']:,.2f}",
         "plan_403b_pct": f"+{ret_data['plans']['403b']['unrealized_pct']:.2f}%",
-        "plan_457b_bal": f"${ret_data['plans']['457b']['balance']:,.2f}",
+        "plan_457b_bal": f"${current_457b_bal:,.2f}",
         "plan_457b_gain": f"+${ret_data['plans']['457b']['unrealized_gain']:,.2f}",
         "plan_457b_pct": f"+{ret_data['plans']['457b']['unrealized_pct']:.2f}%"
     }
@@ -557,7 +642,7 @@ def get_catalysts():
     signals = []
     candidates_pool = []
     
-    # 1. Evaluate Portfolio Holdings (Conservative Value Standard - No Dip Selling)
+    # 1. Evaluate Portfolio Holdings
     for tkr in PORTFOLIO_CONFIG["equities"].keys():
         try:
             t = yf.Ticker(tkr)
@@ -621,9 +706,6 @@ def get_catalysts():
                 vr = (tod_v / avg_v) if avg_v > 0 else 1.0
                 day_pct = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100.0
                 
-                # Standalone BUY Criteria:
-                # 1. Institutional surge: +3.5% day with heavy volume (1.4x+) and strong upside
-                # 2. Or massive secular discount: Consensus Buy with >= 28% upside
                 is_breakout_surge = day_pct >= 3.5 and vr >= 1.4 and upside >= 15.0
                 is_high_margin_buy = rec in ["buy", "strong_buy"] and upside >= 28.0
                 
@@ -643,11 +725,9 @@ def get_catalysts():
         except Exception:
             pass
 
-    # Sort candidates by upside spread
     candidates_pool.sort(key=lambda x: x["upside"], reverse=True)
     best_replacement = candidates_pool[0] if candidates_pool else None
     
-    # Pair any SELL alerts with the top replacement candidate
     for s in signals:
         if best_replacement:
             s["replacement_ticker"] = best_replacement["ticker"]
@@ -901,17 +981,17 @@ def run_agent():
   <div id="kpi-cards-grid" class="kpi-grid">
     <div id="kpi-card-1" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL LIQUID NET WORTH</div>
-      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">{summary['total_net_worth']}</div>
+      <div id="kpi-networth-val" class="kpi-value" style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">{summary['total_net_worth']}</div>
       <div style="font-size:12px;color:#64748b;font-weight:500;margin-top:4px;">Brokerage + Crypto + Full UC Benefits</div>
     </div>
     <div id="kpi-card-2" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL UC RETIREMENT & PENSION</div>
-      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#0284c7;margin-top:4px;">{summary['uc_total_balance']}</div>
+      <div id="kpi-ret-val" class="kpi-value" style="font-size:26px;font-weight:800;color:#0284c7;margin-top:4px;">{summary['uc_total_balance']}</div>
       <div style="font-size:12px;color:#0284c7;font-weight:700;margin-top:4px;">UCRP ({summary['ucrp_balance']}) + DC Plans ({summary['uc_dc_balance']})</div>
     </div>
     <div id="kpi-card-3" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">ACTIVE BROKERAGE EQUITY</div>
-      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">{summary['brokerage_equity']}</div>
+      <div id="kpi-brokerage-val" class="kpi-value" style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">{summary['brokerage_equity']}</div>
       <div style="font-size:12px;color:#059669;font-weight:700;margin-top:4px;">{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)</div>
     </div>
     <div id="kpi-card-4" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
@@ -1012,9 +1092,9 @@ def run_agent():
             <div style="font-size:11px;color:#059669;font-weight:700;">{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div>
           </div>
         </div>
-        <!-- Enlarged Footer Row with "Total:" and dynamic "Years of Service:" counter with target span -->
+        <!-- Enlarged Footer Row with "Total:" and dynamic "Years of Service:" counter -->
         <div style="margin-top:12px;padding:12px 14px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:13.5px;color:#1e293b;border:1px solid #e2e8f0;">
-          <span><strong>Total:</strong> {summary['uc_total_balance']}</span>
+          <span><strong>Total:</strong> <span id="footer-total-retirement">{summary['uc_total_balance']}</span></span>
           <span style="font-weight:800;color:#0284c7;font-size:14px;">Years of Service: <span id="years-of-service-val">{summary['service_counter_display']}</span></span>
         </div>
       </div>
