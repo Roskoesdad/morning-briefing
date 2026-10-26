@@ -9,7 +9,7 @@
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body { margin: 0; background-color: #f1f5f9; color: #0f172a; padding: 16px; -webkit-text-size-adjust: 100%; }
-    @keyframes pulse-alert { 0%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} 50%{border-color:#b91c1c;box-shadow:0 0 18px 5px rgba(239,68,68,0.55);} 100%{border-color:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.65);} }
+    @keyframes pulse-alert { 0%{border-color:#3b82f6;box-shadow:0 0 0 0 rgba(59,130,246,0.65);} 50%{border-color:#1d4ed8;box-shadow:0 0 18px 5px rgba(59,130,246,0.45);} 100%{border-color:#3b82f6;box-shadow:0 0 0 0 rgba(59,130,246,0.65);} }
     
     .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
     
@@ -26,7 +26,7 @@
     .news-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex-shrink: 0; margin-right: 12px; }
     .news-title { font-size: 13.5px; font-weight: 600; line-height: 1.45; }
     
-    .catalyst-container { margin-bottom: 20px; padding: 14px 20px; border: 3px solid #ef4444; background: #fff5f5; animation: pulse-alert 1.5s infinite; display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px; border-radius: 14px; }
+    .catalyst-container { margin-bottom: 20px; padding: 14px 20px; border: 2px solid #3b82f6; background: #eff6ff; animation: pulse-alert 2s infinite; display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px; border-radius: 14px; }
     .alert-pill { display: inline-flex; align-items: center; padding: 9px 14px; background: #ffffff; border: 1px solid #fecaca; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 8px; }
     .buy-section { padding-left: 10px; border-left: 1px solid #fca5a5; display: inline-flex; align-items: center; gap: 6px; }
     
@@ -36,19 +36,15 @@
       .dashboard-layout { display: flex; flex-direction: column; width: 100%; gap: 12px; }
       .col-left, .col-center, .col-right { width: 100% !important; flex: none !important; }
       
-      /* Make top Wealth Header a clean 2x2 grid on phone */
       .kpi-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
       .kpi-card { padding: 14px !important; }
       .kpi-value { font-size: 20px !important; }
       
-      /* Stack internal 2-column news blocks vertically on mobile */
       .grid-2 { grid-template-columns: 1fr !important; gap: 12px !important; }
       
-      /* Optimize catalyst alert for mobile wrap */
       .alert-pill { width: 100%; display: flex; justify-content: space-between; }
       .buy-section { border-left: none; padding-left: 0; border-top: 1px dashed #fca5a5; padding-top: 6px; width: 100%; margin-top: 4px; }
       
-      /* Tap targets and typography */
       .news-title { font-size: 14px !important; }
       .card { padding: 14px !important; margin-bottom: 12px !important; }
     }
@@ -89,7 +85,7 @@
   <div id="kpi-cards-grid" class="kpi-grid">
     <div id="kpi-card-1" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL LIQUID NET WORTH</div>
-      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">$183,030.47</div>
+      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#0f172a;margin-top:4px;">$182,991.66</div>
       <div style="font-size:12px;color:#64748b;font-weight:500;margin-top:4px;">Brokerage + Crypto + Full UC Benefits</div>
     </div>
     <div id="kpi-card-2" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
@@ -99,28 +95,28 @@
     </div>
     <div id="kpi-card-3" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">ACTIVE BROKERAGE EQUITY</div>
-      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">$10,477.68</div>
-      <div style="font-size:12px;color:#059669;font-weight:700;margin-top:4px;">+$3,822.94 (+57.45% ROI)</div>
+      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">$10,438.87</div>
+      <div style="font-size:12px;color:#059669;font-weight:700;margin-top:4px;">+$3,784.13 (+56.86% ROI)</div>
     </div>
     <div id="kpi-card-4" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TODAY'S BROKERAGE GAIN</div>
-      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#00c805;margin-top:4px;">+$76.69</div>
-      <div style="font-size:12px;color:#00c805;font-weight:700;margin-top:4px;">+0.74% Intraday</div>
+      <div class="kpi-value" style="font-size:26px;font-weight:800;color:#00c805;margin-top:4px;">+$37.89</div>
+      <div style="font-size:12px;color:#00c805;font-weight:700;margin-top:4px;">+0.36% Intraday</div>
     </div>
   </div>
 
   <!-- Catalyst Alert Banner (Hidden if no active signals or suppressed) -->
   <div class="catalyst-container">
-          <div style="display:inline-flex;align-items:center;background:#ef4444;color:#ffffff;font-weight:700;padding:7px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">🚨 CATALYST ALERT</div>
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;"><div class="alert-pill">
-              <span style="background:#991b1b;color:#ffffff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;">SELL</span>
-              <strong>Apple</strong>
-              <button onclick="openReasonsModal('Apple', 'SELL', '%5B%22The%20stock%20trades%20at%20a%20forward%20P/E%20multiple%20that%20exceeds%20its%20historical%20five-year%20average%2C%20pricing%20in%20an%20aggressive%20acceleration%20in%20hardware%20replacement%20cycles%20that%20may%20not%20materialize.%22%2C%20%22Consensus%20target%20prices%20sit%20below%20the%20current%20market%20price%2C%20implying%20negative%20near-term%20upside%20and%20suggesting%20that%20recent%20multiple%20expansion%20has%20outpaced%20fundamental%20earnings%20growth.%22%2C%20%22Maturing%20smartphone%20markets%20and%20lengthening%20upgrade%20cycles%20are%20creating%20headwinds%20for%20the%20core%20iPhone%20segment%2C%20limiting%20organic%20revenue%20growth%20acceleration.%22%5D')" style="background:none;border:none;color:#dc2626;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
-              <span class="buy-section">
-                🔄 Buy: <a href="https://finance.yahoo.com/quote/ORCL/analysis" target="_blank" rel="noopener noreferrer" style="color:#15803d;font-weight:700;text-decoration:none;">Oracle (+86% upside) ↗</a>
-                <button onclick="openReasonsModal('Oracle', 'BUY', '%5B%22Accelerating%20growth%20in%20Oracle%20Cloud%20Infrastructure%20%28OCI%29%20driven%20by%20AI%20training%20workloads%20and%20strategic%20multi-cloud%20partnerships%20provides%20high%20revenue%20visibility%20via%20a%20record%20RPO%20backlog.%22%2C%20%22Positive%20operating%20margin%20trajectory%20supported%20by%20the%20structural%20shift%20toward%20high-margin%20SaaS%20applications%20and%20the%20high%20utilization%20of%20Gen2%20Cloud%20data%20centers.%22%2C%20%22Attractive%20relative%20valuation%20with%20a%20forward%20P/E%20multiple%20that%20significantly%20discounts%20the%20company%27s%20accelerating%20earnings%20growth%20profile%20compared%20to%20other%20Tier-1%20hyperscale%20peers.%22%5D')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
-              </span>
-            </div></div>
+          <div style="display:inline-flex;align-items:center;background:#0f172a;color:#ffffff;font-weight:700;padding:7px 14px;border-radius:6px;font-size:13px;flex-shrink:0;">⚡ CATALYST RADAR</div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;"><div class="alert-pill" style="border-color:#bbf7d0;background:#f0fdf4;">
+                  <span style="background:#15803d;color:#ffffff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;">STRONG BUY</span>
+                  <strong style="color:#14532d;">Oracle</strong>
+                  <button onclick="openReasonsModal('Oracle', 'BUY', '%5B%22Explosive%20RPO%20backlog%20growth%20fueled%20by%20surging%20enterprise%20and%20hyperscale%20AI%20cloud%20demand%20provides%20high%20multi-year%20revenue%20visibility.%22%2C%20%22Dominant%20positioning%20in%20secure%20government%20and%20defense%20cloud%20contracts%20positions%20ORCL%20to%20capture%20massive%20secular%20public-sector%20IT%20modernization%20budgets.%22%2C%20%22Significant%20structural%20margin%20expansion%20driven%20by%20high-margin%20OCI%20infrastructure%20scale%20and%20operational%20leverage%20justifies%20a%20major%20multiple%20re-rating%20toward%20the%20%24236%20price%20target.%22%5D')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+                </div><div class="alert-pill" style="border-color:#bbf7d0;background:#f0fdf4;">
+                  <span style="background:#15803d;color:#ffffff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;">STRONG BUY</span>
+                  <strong style="color:#14532d;">Micron Technology</strong>
+                  <button onclick="openReasonsModal('Micron Technology', 'BUY', '%5B%22Massive%20structural%20backlog%20driven%20by%20surging%20secular%20demand%20for%20High%20Bandwidth%20Memory%20%28HBM%29%20and%20enterprise-grade%20AI%20infrastructure.%22%2C%20%22Significant%20margin%20multiple%20expansion%20fueled%20by%20strict%20industry%20supply%20discipline%20and%20premium%20pricing%20power%20in%20high-performance%20memory%20segments.%22%2C%20%22Expanding%20government%20defense%20and%20domestic%20semiconductor%20contracts%20providing%20highly%20resilient%20revenue%20streams%20and%20reduced%20geopolitical%20risk.%22%5D')" style="background:none;border:none;color:#15803d;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">↗ 3 reasons why</button>
+                </div></div>
         </div>
 
   <!-- Responsive 3-Column Desktop / 1-Column iPhone Layout -->
@@ -193,15 +189,15 @@
         </a><a href="https://www.bbc.co.uk/news/articles/cw5yn3xlprpmo?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-link">
           <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/f0c7/live/712973e0-d110-11f1-b441-2b33b063138f.jpg" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
           <span class="news-title">Celebrations in Serbia after veteran ruler Vučić loses election to student-led protest movement</span>
-        </a><a href="https://www.bbc.co.uk/news/articles/cq398p1wd1evo?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-link">
-          <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/e394/live/7affbe60-d147-11f1-93e1-3b657b665bcf.jpg" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
-          <span class="news-title">Anthropic warns of 'catastrophic risk' to humankind ahead of blockbuster share listing</span>
         </a><a href="https://www.bbc.co.uk/news/articles/cq3dje4g4d5jo?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-link">
           <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/49e6/live/50a614d0-d14b-11f1-93e1-3b657b665bcf.jpg" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
           <span class="news-title">Chris Brown given suspended eight-month prison sentence over nightclub attack</span>
-        </a><a href="https://www.bbc.co.uk/news/articles/c3vgxjex1z9wo?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-link">
-          <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/f0a6/live/4658dae0-d13b-11f1-8d4e-ef1672a07d66.jpg" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
-          <span class="news-title">US Marine indicted for murder and robbery of woman in Japan</span>
+        </a><a href="https://www.bbc.co.uk/news/articles/cq398p1wd1evo?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-link">
+          <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/e394/live/7affbe60-d147-11f1-93e1-3b657b665bcf.jpg" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
+          <span class="news-title">Anthropic warns of 'catastrophic risk' to humankind ahead of blockbuster share listing</span>
+        </a><a href="https://www.bbc.co.uk/news/articles/cw8rz1d286v3o?at_medium=RSS&at_campaign=rss" target="_blank" rel="noopener noreferrer" class="news-link">
+          <img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/9660/live/4332a8c0-d148-11f1-9eb5-811878e0f07d.jpg" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
+          <span class="news-title">Catholic bishops apologise for 'exploited' Trump meeting</span>
         </a>
           </div>
           <div>
@@ -216,7 +212,7 @@
           <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/AP26298130922825-e1792955135338_744559.jpg?w=900" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
           <span class="news-title">15-year-old arrested in connection with shooting near Florida A&M stadium</span>
         </a><a href="https://fox5sandiego.com/traffic/interstate-15-deadly-crash-san-diego/" target="_blank" rel="noopener noreferrer" class="news-link">
-          <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/Crash-on-I-15.jpg?w=900" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
+          <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/I-15-crash.jpg?w=900" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
           <span class="news-title">Man dies in San Diego crash while helping his daughter with disabled vehicle</span>
         </a><a href="https://fox5sandiego.com/news/eric-bauza-the-voice-of-bugs-bunny-and-many-other-looney-tunes-characters-dies-suddenly-family-says/" target="_blank" rel="noopener noreferrer" class="news-link">
           <img src="https://fox5sandiego.com/wp-content/uploads/sites/15/2026/10/AP24100096099064-1-e1793019114629.jpg?w=900" class="news-thumb" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60'" />
@@ -304,7 +300,7 @@
             <div style="font-size:11px;color:#059669;font-weight:700;">+$2,270.49 (+17.25%)</div>
           </div>
         </div>
-        <!-- 10% Larger Footer Row with "Total:" and dynamic "Years of Service:" counter -->
+        <!-- Enlarged Footer Row with "Total:" and dynamic "Years of Service:" counter -->
         <div style="margin-top:12px;padding:12px 14px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:13.5px;color:#1e293b;border:1px solid #e2e8f0;">
           <span><strong>Total:</strong> $172,552.79</span>
           <span style="font-weight:800;color:#0284c7;font-size:14px;">Years of Service: 12.63</span>
@@ -314,32 +310,14 @@
       <!-- Active Portfolio Holdings Pulse -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</h2>
-        <div><a href="https://finance.yahoo.com/quote/NVDA" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Nvidia</div>
-            <div style="font-size:12px;color:#64748b;">NVDA</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$217.69</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.11%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/WDC" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+        <div><a href="https://finance.yahoo.com/quote/WDC" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
             <div style="font-weight:700;font-size:14px;color:#0f172a;">Western Digital</div>
             <div style="font-size:12px;color:#64748b;">WDC</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$352.33</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.02%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/VLO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Valero Energy</div>
-            <div style="font-size:12px;color:#64748b;">VLO</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$429.42</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.49%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$356.86</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+4.35%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/TSM" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -347,17 +325,26 @@
             <div style="font-size:12px;color:#64748b;">TSM</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$427.17</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.32%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$426.31</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.11%</span>
           </div>
-        </a><a href="https://finance.yahoo.com/quote/TMO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+        </a><a href="https://finance.yahoo.com/quote/NVDA" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Thermo Fisher</div>
-            <div style="font-size:12px;color:#64748b;">TMO</div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Nvidia</div>
+            <div style="font-size:12px;color:#64748b;">NVDA</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$683.75</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+1.47%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$215.56</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.11%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/VLO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Valero Energy</div>
+            <div style="font-size:12px;color:#64748b;">VLO</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$425.27</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+1.50%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/EQIX" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -365,17 +352,62 @@
             <div style="font-size:12px;color:#64748b;">EQIX</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$969.07</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+1.47%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$965.93</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+1.14%</span>
           </div>
-        </a><a href="https://finance.yahoo.com/quote/ORCL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+        </a><a href="https://finance.yahoo.com/quote/MSFT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Oracle</div>
-            <div style="font-size:12px;color:#64748b;">ORCL</div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Microsoft</div>
+            <div style="font-size:12px;color:#64748b;">MSFT</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$127.96</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+1.46%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$530.51</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+1.07%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/TMO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Thermo Fisher</div>
+            <div style="font-size:12px;color:#64748b;">TMO</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$678.15</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.64%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/BRK-B" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Berkshire Hathaway</div>
+            <div style="font-size:12px;color:#64748b;">BRK-B</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$545.92</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.63%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/VOO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Vanguard S&P 500</div>
+            <div style="font-size:12px;color:#64748b;">VOO</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$703.67</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.59%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/WMT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Walmart</div>
+            <div style="font-size:12px;color:#64748b;">WMT</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$120.59</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.51%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/PLTR" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Palantir</div>
+            <div style="font-size:12px;color:#64748b;">PLTR</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$198.37</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.47%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/DOGE-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -384,34 +416,7 @@
           </div>
           <div style="text-align:right;">
             <div style="font-weight:700;font-size:14px;color:#0f172a;">$0.08</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+1.16%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/MSFT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Microsoft</div>
-            <div style="font-size:12px;color:#64748b;">MSFT</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$530.11</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.99%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/VOO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Vanguard S&P 500</div>
-            <div style="font-size:12px;color:#64748b;">VOO</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$705.51</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.85%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/SOL-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Solana</div>
-            <div style="font-size:12px;color:#64748b;">SOL-USD</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$102.04</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.80%</span>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.44%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/META" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -419,44 +424,8 @@
             <div style="font-size:12px;color:#64748b;">META</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$645.05</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.77%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/AMZN" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Amazon</div>
-            <div style="font-size:12px;color:#64748b;">AMZN</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$250.25</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.59%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/PLTR" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Palantir</div>
-            <div style="font-size:12px;color:#64748b;">PLTR</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$198.36</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.47%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/XRP-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">XRP</div>
-            <div style="font-size:12px;color:#64748b;">XRP-USD</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$1.30</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.40%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/BTC-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Bitcoin</div>
-            <div style="font-size:12px;color:#64748b;">BTC-USD</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$80,309.24</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.32%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$641.99</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.30%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/COST" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -464,26 +433,53 @@
             <div style="font-size:12px;color:#64748b;">COST</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$1,004.82</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.28%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$1,004.51</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.25%</span>
           </div>
-        </a><a href="https://finance.yahoo.com/quote/WMT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+        </a><a href="https://finance.yahoo.com/quote/ORCL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Walmart</div>
-            <div style="font-size:12px;color:#64748b;">WMT</div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Oracle</div>
+            <div style="font-size:12px;color:#64748b;">ORCL</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$120.27</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.24%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/BRK-B" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Berkshire Hathaway</div>
-            <div style="font-size:12px;color:#64748b;">BRK-B</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$543.42</div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$126.33</div>
             <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.17%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/AMZN" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Amazon</div>
+            <div style="font-size:12px;color:#64748b;">AMZN</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$249.10</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.13%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/SOL-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Solana</div>
+            <div style="font-size:12px;color:#64748b;">SOL-USD</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$101.22</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.01%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/BTC-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Bitcoin</div>
+            <div style="font-size:12px;color:#64748b;">BTC-USD</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$79,845.84</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.26%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/XRP-USD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">XRP</div>
+            <div style="font-size:12px;color:#64748b;">XRP-USD</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$1.29</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.49%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/GOOGL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -491,26 +487,8 @@
             <div style="font-size:12px;color:#64748b;">GOOGL</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$321.04</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.03%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/AAPL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Apple</div>
-            <div style="font-size:12px;color:#64748b;">AAPL</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$346.61</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.29%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/HOOD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Robinhood</div>
-            <div style="font-size:12px;color:#64748b;">HOOD</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$93.49</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-1.49%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$319.33</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.57%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/DLTR" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -518,8 +496,26 @@
             <div style="font-size:12px;color:#64748b;">DLTR</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$123.43</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-1.50%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$124.46</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.68%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/AAPL" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Apple</div>
+            <div style="font-size:12px;color:#64748b;">AAPL</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$344.61</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.86%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/HOOD" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Robinhood</div>
+            <div style="font-size:12px;color:#64748b;">HOOD</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$92.94</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-2.07%</span>
           </div>
         </a></div>
       </div>
@@ -533,26 +529,8 @@
             <div style="font-size:12px;color:#64748b;">LMT</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$624.08</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.32%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/ANET" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Arista Networks</div>
-            <div style="font-size:12px;color:#64748b;">ANET</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$178.31</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.31%</span>
-          </div>
-        </a><a href="https://finance.yahoo.com/quote/MU" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">Micron Technology</div>
-            <div style="font-size:12px;color:#64748b;">MU</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$908.00</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.19%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$624.10</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.33%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/CSCO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -560,8 +538,8 @@
             <div style="font-size:12px;color:#64748b;">CSCO</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$109.82</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.11%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$109.95</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.23%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/VRT" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -569,8 +547,26 @@
             <div style="font-size:12px;color:#64748b;">VRT</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$200.39</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.05%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$200.51</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+3.11%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/MU" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Micron Technology</div>
+            <div style="font-size:12px;color:#64748b;">MU</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$906.03</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.97%</span>
+          </div>
+        </a><a href="https://finance.yahoo.com/quote/ANET" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">Arista Networks</div>
+            <div style="font-size:12px;color:#64748b;">ANET</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$177.62</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.91%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/AVGO" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -578,8 +574,8 @@
             <div style="font-size:12px;color:#64748b;">AVGO</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$331.02</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.73%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$330.16</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+2.46%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/ISRG" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -587,8 +583,8 @@
             <div style="font-size:12px;color:#64748b;">ISRG</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$455.31</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#15803d;background:#dcfce7;margin-top:2px;">+0.73%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$451.51</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-0.11%</span>
           </div>
         </a><a href="https://finance.yahoo.com/quote/USAR" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
           <div>
@@ -596,8 +592,8 @@
             <div style="font-size:12px;color:#64748b;">USAR</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-weight:700;font-size:14px;color:#0f172a;">$9.22</div>
-            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-1.02%</span>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">$9.18</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:#dc2626;background:#fee2e2;margin-top:2px;">-1.45%</span>
           </div>
         </a></div>
       </div>
@@ -607,7 +603,12 @@
 
   <script id="catalyst-tracker-data" type="application/json">
 {
-  "AAPL": {
+  "ORCL": {
+    "first_seen": "2026-10-26",
+    "last_seen": "2026-10-26",
+    "days_active": 1
+  },
+  "MU": {
     "first_seen": "2026-10-26",
     "last_seen": "2026-10-26",
     "days_active": 1
@@ -634,7 +635,7 @@ function openReasonsModal(name, actionType, reasonsJson){
   try {
     reasons = JSON.parse(decodeURIComponent(reasonsJson));
   } catch(e) {
-    reasons = ["Strategic valuation considerations.", "Sector rebalancing and capital efficiency.", "Growth upside and risk-reward profile."];
+    reasons = ["Secular growth driver acceleration.", "Substantial valuation discount against institutional price targets.", "Expanding capital efficiency and market share."];
   }
   
   const list = document.getElementById('modal-reasons-list');
