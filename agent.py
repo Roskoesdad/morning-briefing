@@ -44,36 +44,36 @@ UCPATH_PAYDAYS = [
     "2027-12-29"
 ]
 
-# Portfolio Configuration, Exact Holdings & Institutional UC Retirement
+# Combined Active Holdings: Robinhood + E*TRADE Individual Brokerage (-7534)
 PORTFOLIO_CONFIG = {
     "net_deposits": 6654.74,
     "cash": 3.56,  # $3.13 Robinhood cash + $0.43 E*TRADE cash
     "equities": {
+        "BRK-B": 1.55,
+        "WMT": 3.79,
         "AAPL": 2.02,
         "AMZN": 1.02,
-        "BRK-B": 1.55,
-        "COST": 0.18714,
-        "DLTR": 1.02,
-        "EQIX": 0.310956,
-        "GOOGL": 1.46,
-        "HOOD": 2.00,
-        "META": 0.154687,
         "MSFT": 2.37,
         "NVDA": 5.03,
-        "ORCL": 0.379276,
+        "DLTR": 1.02,
+        "VLO": 1.02,
+        "COST": 0.18714,
+        "HOOD": 2.00,
+        "META": 0.154687,
+        "GOOGL": 1.46,
+        "EQIX": 0.310956,
         "PLTR": 1.00,
-        "TMO": 0.108713,
         "TSM": 0.127575,
-        "VLO": 1.02487,
-        "VOO": 0.142004,
+        "TMO": 0.108713,
         "WDC": 0.140095,
-        "WMT": 3.79,
+        "ORCL": 0.379276,
+        "VOO": 0.142001,  # E*TRADE Account -7534 position
     },
     "crypto": {
         "BTC-USD": 0.04313012,
+        "XRP-USD": 47.055,
         "DOGE-USD": 73.62,
         "SOL-USD": 0.02192,
-        "XRP-USD": 47.055,
     },
     "retirement": {
         "as_of": "Oct 21, 2026",
@@ -281,7 +281,6 @@ function updateDailyServiceCounter(){
 }
 
 function updateBiweeklyWealthAccrual(){
-  // Official UCPath Payday Schedule from 2026 Calendar
   const paydays = [
     '2026-10-21', '2026-11-04', '2026-11-18', '2026-12-02', '2026-12-16', '2026-12-30',
     '2027-01-13', '2027-01-27', '2027-02-10', '2027-02-24', '2027-03-10', '2027-03-24'
@@ -526,7 +525,6 @@ def calculate_portfolio_summary():
     ret_data = PORTFOLIO_CONFIG["retirement"]
     today_str = date.today().strftime("%Y-%m-%d")
     
-    # Count official paydays passed since benchmark date (Oct 21, 2026)
     paychecks_passed = sum(1 for p in UCPATH_PAYDAYS[1:] if today_str >= p)
     
     accrued_403b = paychecks_passed * ret_data["plans"]["403b"]["per_paycheck"]
@@ -541,7 +539,6 @@ def calculate_portfolio_summary():
     total_net_worth = total_brokerage_equity + current_total_uc_retirement
     ucrp = ret_data["plans"]["ucrp"]
 
-    # Daily Incrementing Counter: steps up by exactly +0.01 per calendar day
     bench_date = datetime.strptime(ret_data.get("benchmark_date", "2026-10-21"), "%Y-%m-%d").date()
     days_elapsed = max(0, (date.today() - bench_date).days)
     dynamic_service = 12.61 + (days_elapsed * 0.01)
@@ -614,7 +611,6 @@ def filter_active_catalysts(raw_signals):
                     "days_active": days_active
                 }
             
-            # Allow strictly Day 1 and Day 2; suppress on Day 3+
             if days_active < 3:
                 active_signals.append(s)
             else:
@@ -737,7 +733,7 @@ def get_catalysts():
             buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
             s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
 
-    # 3. Add Standalone "BUY NOW" Catalysts (Independent of Sells)
+    # 3. Add Standalone "BUY NOW" Catalysts
     for top_buy in candidates_pool[:2]:
         if not any(s.get("replacement_ticker") == top_buy["ticker"] for s in signals):
             badge = "BUY NOW" if top_buy.get("is_surge") else "STRONG BUY"
@@ -756,7 +752,74 @@ def get_catalysts():
     signals.sort(key=lambda x: x.get("upside_num", 0), reverse=True)
     return filter_active_catalysts(signals[:4])
 
-def get_quotes(tickers):
+def get_portfolio_pulse():
+    """Fetches real-time prices and computes exact dollar value owned for each holding."""
+    out = []
+    
+    # 1. Stocks
+    for sym, shares in PORTFOLIO_CONFIG["equities"].items():
+        p, chg = None, 0.0
+        try:
+            t = yf.Ticker(sym)
+            fi = getattr(t, "fast_info", None)
+            if fi and fi.last_price and fi.previous_close:
+                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
+            else:
+                h = t.history(period="2d")
+                if len(h) >= 2:
+                    p = float(h["Close"].iloc[-1])
+                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
+        except Exception:
+            pass
+        
+        val_owned = (p * shares) if p else 0.0
+        out.append({
+            "ticker": sym,
+            "name": COMPANY_NAMES.get(sym, sym),
+            "shares_display": f"{shares:g} shares",
+            "val_owned": f"${val_owned:,.2f}" if p else "N/A",
+            "val_num": val_owned,
+            "pct_num": chg,
+            "pct": f"{chg:+.2f}%",
+            "positive": chg >= 0,
+            "url": f"https://finance.yahoo.com/quote/{sym}"
+        })
+
+    # 2. Cryptocurrencies
+    for sym, shares in PORTFOLIO_CONFIG["crypto"].items():
+        p, chg = None, 0.0
+        clean_ticker = sym.replace("-USD", "")
+        try:
+            t = yf.Ticker(sym)
+            fi = getattr(t, "fast_info", None)
+            if fi and fi.last_price and fi.previous_close:
+                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
+            else:
+                h = t.history(period="2d")
+                if len(h) >= 2:
+                    p = float(h["Close"].iloc[-1])
+                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
+        except Exception:
+            pass
+        
+        val_owned = (p * shares) if p else 0.0
+        out.append({
+            "ticker": clean_ticker,
+            "name": COMPANY_NAMES.get(sym, clean_ticker),
+            "shares_display": f"{shares:g} shares" if shares < 10 else f"{shares:.2f} shares",
+            "val_owned": f"${val_owned:,.2f}" if p else "N/A",
+            "val_num": val_owned,
+            "pct_num": chg,
+            "pct": f"{chg:+.2f}%",
+            "positive": chg >= 0,
+            "url": f"https://finance.yahoo.com/quote/{sym}"
+        })
+
+    # Sort holdings descending by total equity value owned
+    out.sort(key=lambda x: x["val_num"], reverse=True)
+    return out
+
+def get_watchlist_quotes(tickers):
     out = []
     for sym in tickers:
         p, chg = None, 0.0
@@ -808,7 +871,25 @@ def render_news_items(items):
         </a>"""
     return out
 
-def render_stock_list(quotes):
+def render_portfolio_pulse_list(pulse_items):
+    """Renders exact shares owned on the left and total equity owned on the right."""
+    out = ""
+    for q in pulse_items:
+        color = "#15803d" if q["positive"] else "#dc2626"
+        badge_bg = "#dcfce7" if q["positive"] else "#fee2e2"
+        out += f"""<a href="{q['url']}" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">{q['name']}</div>
+            <div style="font-size:12px;color:#64748b;font-weight:500;">{q['ticker']} · {q['shares_display']}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;font-size:14px;color:#0f172a;">{q['val_owned']}</div>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:{color};background:{badge_bg};margin-top:2px;">{q['pct']}</span>
+          </div>
+        </a>"""
+    return out
+
+def render_watchlist_list(quotes):
     out = ""
     for q in quotes:
         color = "#15803d" if q["positive"] else "#dc2626"
@@ -839,8 +920,9 @@ def run_agent():
     padres, mlb = fetch_padres_stories()
     world_news = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
     sd_news = fetch_fox5()
-    holdings_quotes = get_quotes(HOLDINGS)
-    watchlist_quotes = get_quotes(WATCHLIST)
+    
+    pulse_items = get_portfolio_pulse()
+    watchlist_quotes = get_watchlist_quotes(WATCHLIST)
 
     catalysts, history_state = get_catalysts()
     day_color = "#00c805" if summary["is_day_positive"] else "#ef4444"
@@ -888,8 +970,8 @@ def run_agent():
       </div>
     </div>"""
 
-    holdings_html = render_stock_list(holdings_quotes)
-    watchlist_html = render_stock_list(watchlist_quotes)
+    holdings_html = render_portfolio_pulse_list(pulse_items)
+    watchlist_html = render_watchlist_list(watchlist_quotes)
 
     # Embed tracker state to ensure suppression across runs
     history_embed_tag = f'<script id="catalyst-tracker-data" type="application/json">\n{json.dumps(history_state, indent=2)}\n</script>'
@@ -1099,7 +1181,7 @@ def run_agent():
         </div>
       </div>
 
-      <!-- Active Portfolio Holdings Pulse -->
+      <!-- Active Portfolio Holdings Pulse (Exact Shares Owned & Equity Value) -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</h2>
         <div>{holdings_html}</div>
