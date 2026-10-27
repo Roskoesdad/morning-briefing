@@ -191,7 +191,7 @@ HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["cr
 # Active Watchlist
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 
-# Broad-Market Leaders
+# Broad-Market Scanner
 BROAD_MARKET = [
     "AMD", "INTC", "QCOM", "ARM", "SMCI", "PANW", "CRWD", "NOW",
     "CRM", "SNOW", "DELL", "HPE", "UBER", "ABNB",
@@ -454,8 +454,8 @@ def fetch_fox5():
 
 def fetch_market_quotes_batch(tickers):
     """
-    Fetches real-time price and previous close in a single pass to eliminate
-    rate-limiting, discrepancies, and duplicate network requests.
+    Fetches real-time price and previous close in a single pass to ensure
+    exact alignment across Active Brokerage Equity, Day Gain, and Pulse rows.
     """
     quotes = {}
     for sym in tickers:
@@ -515,7 +515,7 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
     ]
 
 def calculate_portfolio_summary(market_quotes):
-    """Calculates all-time returns, day gains, dynamic service credit, and exact UCPath calendar accrual."""
+    """Calculates all-time returns, exact day gains, dynamic service credit, and biweekly calendar accrual."""
     total_brokerage_equity = PORTFOLIO_CONFIG["cash"]
     total_prev_close_equity = PORTFOLIO_CONFIG["cash"]
 
@@ -580,7 +580,6 @@ def calculate_portfolio_summary(market_quotes):
     }
 
 def read_embedded_history():
-    """Reads persistent catalyst history embedded directly into index.html across GitHub Actions runs."""
     html_file = "index.html"
     if os.path.exists(html_file):
         try:
@@ -594,10 +593,6 @@ def read_embedded_history():
     return {}
 
 def filter_active_catalysts(raw_signals):
-    """
-    Suppresses any stock alert that has triggered across 2 days.
-    History is tracked by the specific primary ticker and saved into index.html metadata.
-    """
     history = read_embedded_history()
     today_str = datetime.now().strftime("%Y-%m-%d")
     current_keys = set()
@@ -643,15 +638,9 @@ def filter_active_catalysts(raw_signals):
     return active_signals, history
 
 def get_catalysts():
-    """
-    Value-Investing & High-Probability Growth Catalyst Engine:
-    1. SELL: Flags portfolio holdings ONLY if fundamentally downgraded or trading >20% above consensus intrinsic target.
-    2. STANDALONE BUY: Identifies secular breakout / contract winners (+3.5%+ volume surge or +25%+ margin of safety).
-    """
     signals = []
     candidates_pool = []
     
-    # 1. Evaluate Portfolio Holdings
     for tkr in PORTFOLIO_CONFIG["equities"].keys():
         try:
             t = yf.Ticker(tkr)
@@ -690,7 +679,6 @@ def get_catalysts():
         except Exception:
             pass
 
-    # 2. Scan Watchlist and Broad Leaders for Standalone High-Probability "BUY" Catalysts
     scan_buy_pool = WATCHLIST + BROAD_MARKET + list(PORTFOLIO_CONFIG["equities"].keys())
     seen_buy = set()
     for tkr in scan_buy_pool:
@@ -746,7 +734,6 @@ def get_catalysts():
             buy_reasons_list = generate_reasons(best_replacement["ticker"], "BUY", best_replacement["price"], best_replacement["target"], best_replacement["upside"], best_replacement["rec"])
             s["replacement_reasons_encoded"] = urllib.parse.quote(json.dumps(buy_reasons_list))
 
-    # 3. Add Standalone "BUY NOW" Catalysts
     for top_buy in candidates_pool[:2]:
         if not any(s.get("replacement_ticker") == top_buy["ticker"] for s in signals):
             badge = "BUY NOW" if top_buy.get("is_surge") else "STRONG BUY"
@@ -766,7 +753,10 @@ def get_catalysts():
     return filter_active_catalysts(signals[:4])
 
 def get_portfolio_pulse(market_quotes):
-    """Generates the Portfolio Pulse list using the exact same quotes dictionary as the top wealth cards."""
+    """
+    Computes exact equity values owned and sorts strictly from
+    BIGGEST GAIN (+%) to NEGATIVE GAIN (-%).
+    """
     out = []
     
     # 1. Stocks
@@ -808,7 +798,8 @@ def get_portfolio_pulse(market_quotes):
             "url": f"https://finance.yahoo.com/quote/{sym}"
         })
 
-    out.sort(key=lambda x: x["val_num"], reverse=True)
+    # SORTING: Biggest Gain (+%) to Negative Gain (-%)
+    out.sort(key=lambda x: x["pct_num"], reverse=True)
     return out
 
 def get_watchlist_quotes(tickers, market_quotes):
@@ -854,7 +845,6 @@ def render_news_items(items):
     return out
 
 def render_portfolio_pulse_list(pulse_items):
-    """Renders exact shares owned on the left and total equity owned on the right."""
     out = ""
     for q in pulse_items:
         color = "#15803d" if q["positive"] else "#dc2626"
@@ -889,7 +879,7 @@ def render_watchlist_list(quotes):
     return out
 
 def run_agent():
-    print("Fetching single-pass real-time market data across holdings & watchlist...")
+    print("Executing single-pass market synchronization...")
     all_needed_tickers = list(set(HOLDINGS + WATCHLIST))
     market_quotes = fetch_market_quotes_batch(all_needed_tickers)
     
@@ -912,7 +902,6 @@ def run_agent():
     catalysts, history_state = get_catalysts()
     day_color = "#00c805" if summary["is_day_positive"] else "#ef4444"
 
-    # Format the catalyst alert banner
     catalyst_banner_html = ""
     if catalysts:
         items_html = ""
@@ -1145,7 +1134,7 @@ def run_agent():
           </div>
           <div style="text-align:right;">
             <div style="font-weight:800;font-size:14px;color:#0f172a;">{summary['plan_403b_bal']}</div>
-            <div style="font-size:11px;color:#059669;font-weight:700;">{summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div>
+            <div style="font-size:11px;color:#059669;font-weight:700;">Market Gain: {summary['plan_403b_gain']} ({summary['plan_403b_pct']})</div>
           </div>
         </div>
         <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
@@ -1155,7 +1144,7 @@ def run_agent():
           </div>
           <div style="text-align:right;">
             <div style="font-weight:800;font-size:14px;color:#0f172a;">{summary['plan_457b_bal']}</div>
-            <div style="font-size:11px;color:#059669;font-weight:700;">{summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div>
+            <div style="font-size:11px;color:#059669;font-weight:700;">Market Gain: {summary['plan_457b_gain']} ({summary['plan_457b_pct']})</div>
           </div>
         </div>
         <!-- Enlarged Footer Row with "Total:" and dynamic "Years of Service:" counter -->
@@ -1165,7 +1154,7 @@ def run_agent():
         </div>
       </div>
 
-      <!-- Active Portfolio Holdings Pulse (Exact Shares Owned & Position Equity Value) -->
+      <!-- Active Portfolio Holdings Pulse (Sorted: Biggest Gain to Negative Gain) -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</h2>
         <div>{holdings_html}</div>
