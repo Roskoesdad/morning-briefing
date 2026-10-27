@@ -67,7 +67,7 @@ PORTFOLIO_CONFIG = {
         "TMO": 0.108713,
         "WDC": 0.140095,
         "ORCL": 0.379276,
-        "VOO": 0.142001,  # E*TRADE Account -7534 position
+        "VOO": 0.142001,  # E*TRADE Account -7534
     },
     "crypto": {
         "BTC-USD": 0.04313012,
@@ -191,7 +191,7 @@ HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["cr
 # Active Watchlist
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 
-# Broad-Market Scanner (S&P 500 & Nasdaq Leaders)
+# Broad-Market Leaders
 BROAD_MARKET = [
     "AMD", "INTC", "QCOM", "ARM", "SMCI", "PANW", "CRWD", "NOW",
     "CRM", "SNOW", "DELL", "HPE", "UBER", "ABNB",
@@ -452,6 +452,36 @@ def fetch_fox5():
                     return out
     return out[:5]
 
+def fetch_market_quotes_batch(tickers):
+    """
+    Fetches real-time price and previous close in a single pass to eliminate
+    rate-limiting, discrepancies, and duplicate network requests.
+    """
+    quotes = {}
+    for sym in tickers:
+        try:
+            t = yf.Ticker(sym)
+            fi = getattr(t, "fast_info", None)
+            p, prev = None, None
+            if fi and fi.last_price and fi.previous_close:
+                p = float(fi.last_price)
+                prev = float(fi.previous_close)
+            else:
+                h = t.history(period="2d")
+                if len(h) >= 2:
+                    p = float(h["Close"].iloc[-1])
+                    prev = float(h["Close"].iloc[-2])
+                elif len(h) == 1:
+                    p = float(h["Close"].iloc[-1])
+                    prev = p
+
+            if p is not None and prev is not None and prev > 0:
+                chg = ((p - prev) / prev) * 100.0
+                quotes[sym] = {"price": p, "prev_close": prev, "pct_chg": chg}
+        except Exception:
+            pass
+    return quotes
+
 def generate_reasons(ticker, action_type, price, target, upside, rec):
     company_name = COMPANY_NAMES.get(ticker, ticker)
     try:
@@ -484,7 +514,7 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
         "Capital Efficiency: Reallocating proceeds into higher upside holdings offers improved risk-adjusted growth."
     ]
 
-def calculate_portfolio_summary():
+def calculate_portfolio_summary(market_quotes):
     """Calculates all-time returns, day gains, dynamic service credit, and exact UCPath calendar accrual."""
     total_brokerage_equity = PORTFOLIO_CONFIG["cash"]
     total_prev_close_equity = PORTFOLIO_CONFIG["cash"]
@@ -493,27 +523,10 @@ def calculate_portfolio_summary():
 
     for sym in all_symbols:
         shares = PORTFOLIO_CONFIG["equities"].get(sym) or PORTFOLIO_CONFIG["crypto"].get(sym, 0.0)
-        try:
-            t = yf.Ticker(sym)
-            fi = getattr(t, "fast_info", None)
-            p, prev = None, None
-            if fi and fi.last_price and fi.previous_close:
-                p = float(fi.last_price)
-                prev = float(fi.previous_close)
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    prev = float(h["Close"].iloc[-2])
-                elif len(h) == 1:
-                    p = float(h["Close"].iloc[-1])
-                    prev = p
-
-            if p is not None and prev is not None:
-                total_brokerage_equity += p * shares
-                total_prev_close_equity += prev * shares
-        except Exception:
-            pass
+        q = market_quotes.get(sym)
+        if q:
+            total_brokerage_equity += q["price"] * shares
+            total_prev_close_equity += q["prev_close"] * shares
 
     net_deposits = PORTFOLIO_CONFIG["net_deposits"]
     all_time_dollar = total_brokerage_equity - net_deposits
@@ -752,27 +765,17 @@ def get_catalysts():
     signals.sort(key=lambda x: x.get("upside_num", 0), reverse=True)
     return filter_active_catalysts(signals[:4])
 
-def get_portfolio_pulse():
-    """Fetches real-time prices and computes exact dollar value owned for each holding."""
+def get_portfolio_pulse(market_quotes):
+    """Generates the Portfolio Pulse list using the exact same quotes dictionary as the top wealth cards."""
     out = []
     
     # 1. Stocks
     for sym, shares in PORTFOLIO_CONFIG["equities"].items():
-        p, chg = None, 0.0
-        try:
-            t = yf.Ticker(sym)
-            fi = getattr(t, "fast_info", None)
-            if fi and fi.last_price and fi.previous_close:
-                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
-        except Exception:
-            pass
-        
+        q = market_quotes.get(sym, {"price": 0.0, "pct_chg": 0.0})
+        p = q["price"]
+        chg = q["pct_chg"]
         val_owned = (p * shares) if p else 0.0
+        
         out.append({
             "ticker": sym,
             "name": COMPANY_NAMES.get(sym, sym),
@@ -787,22 +790,12 @@ def get_portfolio_pulse():
 
     # 2. Cryptocurrencies
     for sym, shares in PORTFOLIO_CONFIG["crypto"].items():
-        p, chg = None, 0.0
-        clean_ticker = sym.replace("-USD", "")
-        try:
-            t = yf.Ticker(sym)
-            fi = getattr(t, "fast_info", None)
-            if fi and fi.last_price and fi.previous_close:
-                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
-        except Exception:
-            pass
-        
+        q = market_quotes.get(sym, {"price": 0.0, "pct_chg": 0.0})
+        p = q["price"]
+        chg = q["pct_chg"]
         val_owned = (p * shares) if p else 0.0
+        clean_ticker = sym.replace("-USD", "")
+        
         out.append({
             "ticker": clean_ticker,
             "name": COMPANY_NAMES.get(sym, clean_ticker),
@@ -815,26 +808,15 @@ def get_portfolio_pulse():
             "url": f"https://finance.yahoo.com/quote/{sym}"
         })
 
-    # Sort holdings descending by total equity value owned
     out.sort(key=lambda x: x["val_num"], reverse=True)
     return out
 
-def get_watchlist_quotes(tickers):
+def get_watchlist_quotes(tickers, market_quotes):
     out = []
     for sym in tickers:
-        p, chg = None, 0.0
-        try:
-            t = yf.Ticker(sym)
-            fi = getattr(t, "fast_info", None)
-            if fi and fi.last_price and fi.previous_close:
-                p, chg = fi.last_price, ((fi.last_price - fi.previous_close) / fi.previous_close) * 100
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    chg = ((p - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
-        except Exception:
-            pass
+        q = market_quotes.get(sym, {"price": 0.0, "pct_chg": 0.0})
+        p = q["price"]
+        chg = q["pct_chg"]
         out.append({
             "ticker": sym,
             "name": COMPANY_NAMES.get(sym, sym),
@@ -907,8 +889,11 @@ def render_watchlist_list(quotes):
     return out
 
 def run_agent():
-    print("Calculating portfolio metrics and syncing market data...")
-    summary = calculate_portfolio_summary()
+    print("Fetching single-pass real-time market data across holdings & watchlist...")
+    all_needed_tickers = list(set(HOLDINGS + WATCHLIST))
+    market_quotes = fetch_market_quotes_batch(all_needed_tickers)
+    
+    summary = calculate_portfolio_summary(market_quotes)
 
     ars = fetch_rss("https://feeds.arstechnica.com/arstechnica/technology-lab", 5, "ai")[:3]
     decoder = fetch_rss("https://the-decoder.com/feed/", 5, "ai")[:3]
@@ -921,8 +906,8 @@ def run_agent():
     world_news = fetch_rss("https://feeds.bbci.co.uk/news/world/rss.xml", 5)
     sd_news = fetch_fox5()
     
-    pulse_items = get_portfolio_pulse()
-    watchlist_quotes = get_watchlist_quotes(WATCHLIST)
+    pulse_items = get_portfolio_pulse(market_quotes)
+    watchlist_quotes = get_watchlist_quotes(WATCHLIST, market_quotes)
 
     catalysts, history_state = get_catalysts()
     day_color = "#00c805" if summary["is_day_positive"] else "#ef4444"
@@ -973,7 +958,6 @@ def run_agent():
     holdings_html = render_portfolio_pulse_list(pulse_items)
     watchlist_html = render_watchlist_list(watchlist_quotes)
 
-    # Embed tracker state to ensure suppression across runs
     history_embed_tag = f'<script id="catalyst-tracker-data" type="application/json">\n{json.dumps(history_state, indent=2)}\n</script>'
 
     full_html = f"""<!DOCTYPE html>
@@ -1181,7 +1165,7 @@ def run_agent():
         </div>
       </div>
 
-      <!-- Active Portfolio Holdings Pulse (Exact Shares Owned & Equity Value) -->
+      <!-- Active Portfolio Holdings Pulse (Exact Shares Owned & Position Equity Value) -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</h2>
         <div>{holdings_html}</div>
