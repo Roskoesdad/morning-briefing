@@ -1,5 +1,5 @@
 import os, re, time, urllib.request, json, feedparser
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 import yfinance as yf
 from bs4 import BeautifulSoup
 from google import genai
@@ -67,7 +67,7 @@ PORTFOLIO_CONFIG = {
         "TMO": 0.108713,
         "WDC": 0.140095,
         "ORCL": 0.379276,
-        "VOO": 0.142001,  # E*TRADE Account -7534
+        "VOO": 0.142001,  # E*TRADE Account -7534 position
     },
     "crypto": {
         "BTC-USD": 0.04313012,
@@ -188,10 +188,8 @@ COMPANY_NAMES = {
 
 HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["crypto"].keys())
 
-# Active Watchlist
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 
-# Broad-Market Scanner
 BROAD_MARKET = [
     "AMD", "INTC", "QCOM", "ARM", "SMCI", "PANW", "CRWD", "NOW",
     "CRM", "SNOW", "DELL", "HPE", "UBER", "ABNB",
@@ -454,26 +452,39 @@ def fetch_fox5():
 
 def fetch_market_quotes_batch(tickers):
     """
-    Fetches real-time price and previous close in a single pass to ensure
-    exact alignment across Active Brokerage Equity, Day Gain, and Pulse rows.
+    Fetches real-time price and previous close in a single pass.
+    For crypto assets, pulls hourly bars to align previous close with
+    Robinhood's midnight PDT reset window.
     """
     quotes = {}
     for sym in tickers:
         try:
             t = yf.Ticker(sym)
-            fi = getattr(t, "fast_info", None)
             p, prev = None, None
-            if fi and fi.last_price and fi.previous_close:
-                p = float(fi.last_price)
-                prev = float(fi.previous_close)
-            else:
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    p = float(h["Close"].iloc[-1])
-                    prev = float(h["Close"].iloc[-2])
-                elif len(h) == 1:
-                    p = float(h["Close"].iloc[-1])
-                    prev = p
+            
+            # Crypto alignment (Robinhood resets at midnight local time)
+            if "-USD" in sym:
+                hist = t.history(period="2d", interval="1h")
+                if len(hist) >= 12:
+                    p = float(hist["Close"].iloc[-1])
+                    # Look back ~12-16 hours to capture midnight PDT baseline
+                    idx = max(0, len(hist) - 12)
+                    prev = float(hist["Close"].iloc[idx])
+            
+            # Equities alignment
+            if p is None or prev is None:
+                fi = getattr(t, "fast_info", None)
+                if fi and fi.last_price and fi.previous_close:
+                    p = float(fi.last_price)
+                    prev = float(fi.previous_close)
+                else:
+                    h = t.history(period="2d")
+                    if len(h) >= 2:
+                        p = float(h["Close"].iloc[-1])
+                        prev = float(h["Close"].iloc[-2])
+                    elif len(h) == 1:
+                        p = float(h["Close"].iloc[-1])
+                        prev = p
 
             if p is not None and prev is not None and prev > 0:
                 chg = ((p - prev) / prev) * 100.0
@@ -1018,7 +1029,7 @@ def run_agent():
     </div>
   </div>
 
-  <!-- Centered Executive Wealth Header (Open by Default on Launch) -->
+  <!-- Centered Executive Wealth Header -->
   <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;margin:10px auto 20px auto;">
     <button id="wealth-toggle-btn" onclick="toggleTabRow()" style="background:#ffffff;border:1px solid #cbd5e1;padding:9px 22px;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05);display:inline-flex;align-items:center;gap:8px;">
       <span>💼 Executive Wealth Summary</span>
@@ -1032,7 +1043,7 @@ def run_agent():
     </div>
   </div>
 
-  <!-- Metric Cards Grid (Displayed by Default in 4 cols on Desktop, 2x2 on Phone) -->
+  <!-- Metric Cards Grid -->
   <div id="kpi-cards-grid" class="kpi-grid">
     <div id="kpi-card-1" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TOTAL LIQUID NET WORTH</div>
@@ -1056,10 +1067,10 @@ def run_agent():
     </div>
   </div>
 
-  <!-- Catalyst Alert Banner (Hidden if no active signals or suppressed) -->
+  <!-- Catalyst Alert Banner -->
   {catalyst_banner_html}
 
-  <!-- Responsive 3-Column Desktop / 1-Column iPhone Layout -->
+  <!-- Layout Grid -->
   <div class="dashboard-layout">
     
     <!-- LEFT: Weather -->
@@ -1070,9 +1081,8 @@ def run_agent():
       </div>
     </div>
 
-    <!-- CENTER: Sports, Executive News, AI & Big Tech -->
+    <!-- CENTER: Sports, News, AI -->
     <div class="col-center">
-      <!-- Sports Desk -->
       <div class="card">
         <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">⚾ Sports Desk: San Diego Padres & MLB</h2>
         <div class="grid-2">
@@ -1087,7 +1097,6 @@ def run_agent():
         </div>
       </div>
 
-      <!-- Executive News -->
       <div class="card">
         <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">🌐 Executive News (World & San Diego)</h2>
         <div class="grid-2">
@@ -1102,16 +1111,14 @@ def run_agent():
         </div>
       </div>
 
-      <!-- AI, Big Tech & Industry Breakthroughs -->
       <div class="card">
         <h2 style="font-size:18px;margin-top:0;margin-bottom:14px;">🤖 AI, Big Tech & Industry Breakthroughs</h2>
         {tech_html}
       </div>
     </div>
 
-    <!-- RIGHT: Institutional UC Retirement & Live Portfolio Stock Quotes -->
+    <!-- RIGHT: UC Retirement & Live Portfolio Stock Quotes -->
     <div class="col-right">
-      <!-- UC Retirement Card -->
       <div class="card">
         <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
           <span>🏛️ UC Retirement & Pension</span>
