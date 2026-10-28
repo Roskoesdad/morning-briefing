@@ -1,5 +1,5 @@
 import os, re, time, urllib.request, json, feedparser
-from datetime import datetime, date, timezone
+from datetime import datetime, date
 import yfinance as yf
 from bs4 import BeautifulSoup
 from google import genai
@@ -187,7 +187,6 @@ COMPANY_NAMES = {
 }
 
 HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["crypto"].keys())
-
 WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 
 BROAD_MARKET = [
@@ -202,7 +201,52 @@ P_LOGO = "https://www.mlbstatic.com/team-logos/135.svg"
 M_LOGO = "https://www.mlbstatic.com/team-logos/league-on-dark/1.svg"
 T_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"
 
-DEFAULT_JS = """function toggleWeatherDetail(idx){
+DEFAULT_JS = """// Embedded Portfolio Configuration for Real-Time Client-Side Engine
+const LIVE_PORTFOLIO_CONFIG = {
+  net_deposits: 6654.74,
+  cash: 3.56,
+  equities: {
+    "BRK-B": 1.55,
+    "WMT": 3.79,
+    "AAPL": 2.02,
+    "AMZN": 1.02,
+    "MSFT": 2.37,
+    "NVDA": 5.03,
+    "DLTR": 1.02,
+    "VLO": 1.02,
+    "COST": 0.18714,
+    "HOOD": 2.00,
+    "META": 0.154687,
+    "GOOGL": 1.46,
+    "EQIX": 0.310956,
+    "PLTR": 1.00,
+    "TSM": 0.127575,
+    "TMO": 0.108713,
+    "WDC": 0.140095,
+    "ORCL": 0.379276,
+    "VOO": 0.142001
+  },
+  crypto: {
+    "BTC-USD": 0.04313012,
+    "XRP-USD": 47.055,
+    "DOGE-USD": 73.62,
+    "SOL-USD": 0.02192
+  },
+  watchlist: ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
+};
+
+const LIVE_COMPANY_NAMES = {
+  "AAPL": "Apple", "AMZN": "Amazon", "BRK-B": "Berkshire Hathaway", "COST": "Costco",
+  "DLTR": "Dollar Tree", "EQIX": "Equinix", "GOOGL": "Alphabet (Google)", "HOOD": "Robinhood",
+  "META": "Meta", "MSFT": "Microsoft", "NVDA": "Nvidia", "ORCL": "Oracle", "PLTR": "Palantir",
+  "TMO": "Thermo Fisher", "TSM": "TSMC", "VLO": "Valero Energy", "VOO": "Vanguard S&P 500",
+  "WDC": "Western Digital", "WMT": "Walmart", "BTC-USD": "Bitcoin", "DOGE-USD": "Dogecoin",
+  "SOL-USD": "Solana", "XRP-USD": "XRP", "USAR": "USA Rare Earth", "ISRG": "Intuitive Surgical",
+  "LMT": "Lockheed Martin", "MU": "Micron Technology", "ANET": "Arista Networks", "CSCO": "Cisco",
+  "VRT": "Vertiv", "AVGO": "Broadcom"
+};
+
+function toggleWeatherDetail(idx){
   const el = document.getElementById('w-detail-' + idx);
   if(!el) return;
   const isHidden = el.style.display === 'none' || el.style.display === '';
@@ -278,12 +322,11 @@ function updateDailyServiceCounter(){
   el.innerText = currentCounter;
 }
 
-function updateBiweeklyWealthAccrual(){
+function getCalculatedRetirement(){
   const paydays = [
     '2026-10-21', '2026-11-04', '2026-11-18', '2026-12-02', '2026-12-16', '2026-12-30',
     '2027-01-13', '2027-01-27', '2027-02-10', '2027-02-24', '2027-03-10', '2027-03-24'
   ];
-  
   const todayStr = new Date().toISOString().split('T')[0];
   let accruedPaychecks = 0;
   for(let i = 1; i < paydays.length; i++){
@@ -291,25 +334,189 @@ function updateBiweeklyWealthAccrual(){
       accruedPaychecks++;
     }
   }
+  const addedRetirement = accruedPaychecks * 550.00;
+  return 172552.79 + addedRetirement;
+}
+
+function updateBiweeklyWealthAccrual(){
+  const currentRetirement = getCalculatedRetirement();
+  const retCardVal = document.getElementById('kpi-ret-val');
+  if(retCardVal) retCardVal.innerText = '$' + currentRetirement.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const retFooterVal = document.getElementById('footer-total-retirement');
+  if(retFooterVal) retFooterVal.innerText = '$' + currentRetirement.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// Client-Side Live Market Sync (Executes automatically whenever the browser loads or refreshes)
+async function refreshLiveMarketData(){
+  const allSymbols = [...Object.keys(LIVE_PORTFOLIO_CONFIG.equities), ...Object.keys(LIVE_PORTFOLIO_CONFIG.crypto), ...LIVE_PORTFOLIO_CONFIG.watchlist];
+  const uniqueSymbols = Array.from(new Set(allSymbols));
+  const joined = uniqueSymbols.join(',');
   
-  if(accruedPaychecks > 0){
-    const addedRetirement = accruedPaychecks * 550.00;
-    const baseRetirement = 172552.79;
-    const currentRetirement = baseRetirement + addedRetirement;
-    
-    const retCardVal = document.getElementById('kpi-ret-val');
-    if(retCardVal) retCardVal.innerText = '$' + currentRetirement.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    
-    const retFooterVal = document.getElementById('footer-total-retirement');
-    if(retFooterVal) retFooterVal.innerText = '$' + currentRetirement.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    
-    const netWorthVal = document.getElementById('kpi-networth-val');
-    const brokCardVal = document.getElementById('kpi-brokerage-val');
-    if(netWorthVal && brokCardVal){
-      const brokNum = parseFloat(brokCardVal.innerText.replace(/[^0-9.-]+/g, '')) || 0.0;
-      const totalNW = brokNum + currentRetirement;
-      netWorthVal.innerText = '$' + totalNW.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  // Public CORS query wrapper for real-time market quotes
+  const apiUrl = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(joined);
+  
+  try {
+    let quoteList = [];
+    try {
+      const res = await fetch(apiUrl);
+      if(res.ok){
+        const json = await res.json();
+        quoteList = json.quoteResponse.result || [];
+      }
+    } catch(err) {
+      // Fallback via CORS proxy if direct fetch is blocked by browser origin policy
+      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl);
+      const res = await fetch(proxyUrl);
+      if(res.ok){
+        const json = await res.json();
+        quoteList = json.quoteResponse.result || [];
+      }
     }
+
+    if(!quoteList || quoteList.length === 0) return;
+
+    const quotesMap = {};
+    quoteList.forEach(q => {
+      quotesMap[q.symbol] = {
+        price: q.regularMarketPrice || 0,
+        prevClose: q.regularMarketPreviousClose || (q.regularMarketPrice || 0),
+        changePct: q.regularMarketChangePercent !== undefined ? q.regularMarketChangePercent : 0
+      };
+    });
+
+    let totalBrokerage = LIVE_PORTFOLIO_CONFIG.cash;
+    let totalPrevClose = LIVE_PORTFOLIO_CONFIG.cash;
+    const pulseItems = [];
+
+    // 1. Process Equities
+    for(const [sym, shares] of Object.entries(LIVE_PORTFOLIO_CONFIG.equities)){
+      const q = quotesMap[sym];
+      if(q && q.price > 0){
+        totalBrokerage += q.price * shares;
+        totalPrevClose += q.prevClose * shares;
+        const valOwned = q.price * shares;
+        pulseItems.push({
+          ticker: sym,
+          name: LIVE_COMPANY_NAMES[sym] || sym,
+          sharesDisplay: shares + ' shares',
+          valOwned: '$' + valOwned.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}),
+          valNum: valOwned,
+          pctNum: q.changePct,
+          pct: (q.changePct >= 0 ? '+' : '') + q.changePct.toFixed(2) + '%',
+          positive: q.changePct >= 0,
+          url: 'https://finance.yahoo.com/quote/' + sym
+        });
+      }
+    }
+
+    // 2. Process Cryptocurrencies
+    for(const [sym, shares] of Object.entries(LIVE_PORTFOLIO_CONFIG.crypto)){
+      const q = quotesMap[sym];
+      const cleanTicker = sym.replace('-USD', '');
+      if(q && q.price > 0){
+        totalBrokerage += q.price * shares;
+        totalPrevClose += q.prevClose * shares;
+        const valOwned = q.price * shares;
+        pulseItems.push({
+          ticker: cleanTicker,
+          name: LIVE_COMPANY_NAMES[sym] || cleanTicker,
+          sharesDisplay: (shares < 10 ? shares : shares.toFixed(2)) + ' shares',
+          valOwned: '$' + valOwned.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}),
+          valNum: valOwned,
+          pctNum: q.changePct,
+          pct: (q.changePct >= 0 ? '+' : '') + q.changePct.toFixed(2) + '%',
+          positive: q.changePct >= 0,
+          url: 'https://finance.yahoo.com/quote/' + sym
+        });
+      }
+    }
+
+    // Compute Executive Wealth Cards
+    const dayGain = totalBrokerage - totalPrevClose;
+    const dayGainPct = totalPrevClose > 0 ? (dayGain / totalPrevClose) * 100 : 0;
+    const allTimeGain = totalBrokerage - LIVE_PORTFOLIO_CONFIG.net_deposits;
+    const allTimePct = LIVE_PORTFOLIO_CONFIG.net_deposits > 0 ? (allTimeGain / LIVE_PORTFOLIO_CONFIG.net_deposits) * 100 : 0;
+    const currentRetirement = getCalculatedRetirement();
+    const totalNetWorth = totalBrokerage + currentRetirement;
+
+    // Update Wealth Cards DOM
+    const elBrok = document.getElementById('kpi-brokerage-val');
+    const elBrokSub = document.getElementById('kpi-brokerage-sub');
+    if(elBrok) elBrok.innerText = '$' + totalBrokerage.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if(elBrokSub) elBrokSub.innerText = (allTimeGain >= 0 ? '+$' : '-$') + Math.abs(allTimeGain).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (' + (allTimePct >= 0 ? '+' : '') + allTimePct.toFixed(2) + '% ROI)';
+
+    const elDayGain = document.getElementById('kpi-daygain-val');
+    const elDayGainSub = document.getElementById('kpi-daygain-sub');
+    const dayColor = dayGain >= 0 ? '#00c805' : '#ef4444';
+    if(elDayGain){
+      elDayGain.innerText = (dayGain >= 0 ? '+$' : '-$') + Math.abs(dayGain).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      elDayGain.style.color = dayColor;
+    }
+    if(elDayGainSub){
+      elDayGainSub.innerText = (dayGainPct >= 0 ? '+' : '') + dayGainPct.toFixed(2) + '% Intraday';
+      elDayGainSub.style.color = dayColor;
+    }
+
+    const elNetWorth = document.getElementById('kpi-networth-val');
+    if(elNetWorth) elNetWorth.innerText = '$' + totalNetWorth.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // Render Portfolio Pulse: Sorted from Highest Gain to Negative Gain
+    pulseItems.sort((a, b) => b.pctNum - a.pctNum);
+    const pulseContainer = document.getElementById('portfolio-pulse-list');
+    if(pulseContainer){
+      pulseContainer.innerHTML = pulseItems.map(item => {
+        const color = item.positive ? '#15803d' : '#dc2626';
+        const badgeBg = item.positive ? '#dcfce7' : '#fee2e2';
+        return '<a href="' + item.url + '" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">' +
+          '<div>' +
+            '<div style="font-weight:700;font-size:14px;color:#0f172a;">' + item.name + '</div>' +
+            '<div style="font-size:12px;color:#64748b;font-weight:500;">' + item.ticker + ' · ' + item.sharesDisplay + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<div style="font-weight:700;font-size:14px;color:#0f172a;">' + item.valOwned + '</div>' +
+            '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:' + color + ';background:' + badgeBg + ';margin-top:2px;">' + item.pct + '</span>' +
+          '</div>' +
+        '</a>';
+      }).join('');
+    }
+
+    // Render Watchlist Pulse
+    const watchItems = [];
+    for(const sym of LIVE_PORTFOLIO_CONFIG.watchlist){
+      const q = quotesMap[sym];
+      if(q && q.price > 0){
+        watchItems.push({
+          ticker: sym,
+          name: LIVE_COMPANY_NAMES[sym] || sym,
+          price: '$' + q.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}),
+          pctNum: q.changePct,
+          pct: (q.changePct >= 0 ? '+' : '') + q.changePct.toFixed(2) + '%',
+          positive: q.changePct >= 0,
+          url: 'https://finance.yahoo.com/quote/' + sym
+        });
+      }
+    }
+    watchItems.sort((a, b) => b.pctNum - a.pctNum);
+    const watchContainer = document.getElementById('watchlist-radar-list');
+    if(watchContainer){
+      watchContainer.innerHTML = watchItems.map(item => {
+        const color = item.positive ? '#15803d' : '#dc2626';
+        const badgeBg = item.positive ? '#dcfce7' : '#fee2e2';
+        return '<a href="' + item.url + '" target="_blank" rel="noopener noreferrer" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;text-decoration:none;color:inherit;">' +
+          '<div>' +
+            '<div style="font-weight:700;font-size:14px;color:#0f172a;">' + item.name + '</div>' +
+            '<div style="font-size:12px;color:#64748b;">' + item.ticker + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<div style="font-weight:700;font-size:14px;color:#0f172a;">' + item.price + '</div>' +
+            '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:' + color + ';background:' + badgeBg + ';margin-top:2px;">' + item.pct + '</span>' +
+          '</div>' +
+        '</a>';
+      }).join('');
+    }
+
+  } catch(e) {
+    console.log("Client-side live sync note:", e);
   }
 }
 
@@ -375,7 +582,14 @@ async function updatePadres(){
     else b.innerHTML='⚾ <strong>Upcoming:</strong> '+a+' @ '+h;
   }catch(e){b.innerHTML='Padres live feed standby.';}
 }
-updateWeather();updatePadres();updateDailyServiceCounter();updateBiweeklyWealthAccrual();setInterval(updatePadres,30000);"""
+
+updateWeather();
+updatePadres();
+updateDailyServiceCounter();
+updateBiweeklyWealthAccrual();
+refreshLiveMarketData(); // Live on every page load and browser refresh
+setInterval(refreshLiveMarketData, 30000); // Background refresh every 30s while dashboard is kept open
+setInterval(updatePadres, 30000);"""
 
 def extract_thumb(e, cat="general"):
     for k in ["media_content", "enclosures"]:
@@ -451,27 +665,19 @@ def fetch_fox5():
     return out[:5]
 
 def fetch_market_quotes_batch(tickers):
-    """
-    Fetches real-time price and previous close in a single pass.
-    For crypto assets, pulls hourly bars to align previous close with
-    Robinhood's midnight PDT reset window.
-    """
     quotes = {}
     for sym in tickers:
         try:
             t = yf.Ticker(sym)
             p, prev = None, None
             
-            # Crypto alignment (Robinhood resets at midnight local time)
             if "-USD" in sym:
                 hist = t.history(period="2d", interval="1h")
                 if len(hist) >= 12:
                     p = float(hist["Close"].iloc[-1])
-                    # Look back ~12-16 hours to capture midnight PDT baseline
                     idx = max(0, len(hist) - 12)
                     prev = float(hist["Close"].iloc[idx])
             
-            # Equities alignment
             if p is None or prev is None:
                 fi = getattr(t, "fast_info", None)
                 if fi and fi.last_price and fi.previous_close:
@@ -526,7 +732,6 @@ Output ONLY a JSON array containing exactly 3 strings without markdown."""
     ]
 
 def calculate_portfolio_summary(market_quotes):
-    """Calculates all-time returns, exact day gains, dynamic service credit, and biweekly calendar accrual."""
     total_brokerage_equity = PORTFOLIO_CONFIG["cash"]
     total_prev_close_equity = PORTFOLIO_CONFIG["cash"]
 
@@ -764,13 +969,8 @@ def get_catalysts():
     return filter_active_catalysts(signals[:4])
 
 def get_portfolio_pulse(market_quotes):
-    """
-    Computes exact equity values owned and sorts strictly from
-    BIGGEST GAIN (+%) to NEGATIVE GAIN (-%).
-    """
     out = []
     
-    # 1. Stocks
     for sym, shares in PORTFOLIO_CONFIG["equities"].items():
         q = market_quotes.get(sym, {"price": 0.0, "pct_chg": 0.0})
         p = q["price"]
@@ -789,7 +989,6 @@ def get_portfolio_pulse(market_quotes):
             "url": f"https://finance.yahoo.com/quote/{sym}"
         })
 
-    # 2. Cryptocurrencies
     for sym, shares in PORTFOLIO_CONFIG["crypto"].items():
         q = market_quotes.get(sym, {"price": 0.0, "pct_chg": 0.0})
         p = q["price"]
@@ -809,7 +1008,6 @@ def get_portfolio_pulse(market_quotes):
             "url": f"https://finance.yahoo.com/quote/{sym}"
         })
 
-    # SORTING: Biggest Gain (+%) to Negative Gain (-%)
     out.sort(key=lambda x: x["pct_num"], reverse=True)
     return out
 
@@ -890,7 +1088,7 @@ def render_watchlist_list(quotes):
     return out
 
 def run_agent():
-    print("Executing single-pass market synchronization...")
+    print("Executing single-pass market build...")
     all_needed_tickers = list(set(HOLDINGS + WATCHLIST))
     market_quotes = fetch_market_quotes_batch(all_needed_tickers)
     
@@ -1058,12 +1256,12 @@ def run_agent():
     <div id="kpi-card-3" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">ACTIVE BROKERAGE EQUITY</div>
       <div id="kpi-brokerage-val" class="kpi-value" style="font-size:26px;font-weight:800;color:#059669;margin-top:4px;">{summary['brokerage_equity']}</div>
-      <div style="font-size:12px;color:#059669;font-weight:700;margin-top:4px;">{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)</div>
+      <div id="kpi-brokerage-sub" style="font-size:12px;color:#059669;font-weight:700;margin-top:4px;">{summary['all_time_dollar']} ({summary['all_time_pct']} ROI)</div>
     </div>
     <div id="kpi-card-4" class="kpi-card" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">TODAY'S BROKERAGE GAIN</div>
-      <div class="kpi-value" style="font-size:26px;font-weight:800;color:{day_color};margin-top:4px;">{summary['day_dollar']}</div>
-      <div style="font-size:12px;color:{day_color};font-weight:700;margin-top:4px;">{summary['day_pct']} Intraday</div>
+      <div id="kpi-daygain-val" class="kpi-value" style="font-size:26px;font-weight:800;color:{day_color};margin-top:4px;">{summary['day_dollar']}</div>
+      <div id="kpi-daygain-sub" style="font-size:12px;color:{day_color};font-weight:700;margin-top:4px;">{summary['day_pct']} Intraday</div>
     </div>
   </div>
 
@@ -1161,16 +1359,16 @@ def run_agent():
         </div>
       </div>
 
-      <!-- Active Portfolio Holdings Pulse (Sorted: Biggest Gain to Negative Gain) -->
+      <!-- Active Portfolio Holdings Pulse (Live Updating Container) -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">📊 Portfolio Pulse (Holdings)</h2>
-        <div>{holdings_html}</div>
+        <div id="portfolio-pulse-list">{holdings_html}</div>
       </div>
 
-      <!-- Watchlist Radar -->
+      <!-- Watchlist Radar (Live Updating Container) -->
       <div class="card">
         <h2 style="font-size:16px;margin-top:0;margin-bottom:12px;">🎯 Watchlist Catalyst Radar</h2>
-        <div>{watchlist_html}</div>
+        <div id="watchlist-radar-list">{watchlist_html}</div>
       </div>
     </div>
 
