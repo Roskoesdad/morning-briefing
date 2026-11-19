@@ -46,9 +46,11 @@ UCPATH_PAYDAYS = [
 
 # Combined Active Holdings: Robinhood + E*TRADE Individual Brokerage (-7534)
 PORTFOLIO_CONFIG = {
-    "net_deposits": 6654.74,
-    "cash": 3.56,  # $3.13 Robinhood cash + $0.43 E*TRADE cash
+    "net_deposits": 6754.74,  # Includes +$100.00 deposit used for ANT + USAR
+    "cash": 0.43,  # $0.00 Robinhood cash + $0.43 E*TRADE cash
     "equities": {
+        "ANT": 1.00,  # Anthropic IPO allocation (1 share @ $83.00)
+        "USAR": 2.595346,  # USA Rare Earth ($17.87 @ $6.89)
         "BRK-B": 1.55,
         "WMT": 3.79,
         "AAPL": 2.02,
@@ -121,6 +123,7 @@ PORTFOLIO_CONFIG = {
 }
 
 COMPANY_NAMES = {
+    "ANT": "Anthropic",
     "AAPL": "Apple",
     "AMZN": "Amazon",
     "BRK-B": "Berkshire Hathaway",
@@ -187,7 +190,7 @@ COMPANY_NAMES = {
 }
 
 HOLDINGS = list(PORTFOLIO_CONFIG["equities"].keys()) + list(PORTFOLIO_CONFIG["crypto"].keys())
-WATCHLIST = ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
+WATCHLIST = ["ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 
 BROAD_MARKET = [
     "AMD", "INTC", "QCOM", "ARM", "SMCI", "PANW", "CRWD", "NOW",
@@ -203,9 +206,11 @@ T_LOGO = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&aut
 
 DEFAULT_JS = """// Embedded Portfolio Configuration for Real-Time Client-Side Engine
 const LIVE_PORTFOLIO_CONFIG = {
-  net_deposits: 6654.74,
-  cash: 3.56,
+  net_deposits: 6754.74,
+  cash: 0.43,
   equities: {
+    "ANT": 1.00,
+    "USAR": 2.595346,
     "BRK-B": 1.55,
     "WMT": 3.79,
     "AAPL": 2.02,
@@ -232,18 +237,18 @@ const LIVE_PORTFOLIO_CONFIG = {
     "DOGE-USD": 73.62,
     "SOL-USD": 0.02192
   },
-  watchlist: ["USAR", "ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
+  watchlist: ["ISRG", "LMT", "MU", "ANET", "CSCO", "VRT", "AVGO"]
 };
 
 const LIVE_COMPANY_NAMES = {
-  "AAPL": "Apple", "AMZN": "Amazon", "BRK-B": "Berkshire Hathaway", "COST": "Costco",
-  "DLTR": "Dollar Tree", "EQIX": "Equinix", "GOOGL": "Alphabet (Google)", "HOOD": "Robinhood",
-  "META": "Meta", "MSFT": "Microsoft", "NVDA": "Nvidia", "ORCL": "Oracle", "PLTR": "Palantir",
-  "TMO": "Thermo Fisher", "TSM": "TSMC", "VLO": "Valero Energy", "VOO": "Vanguard S&P 500",
-  "WDC": "Western Digital", "WMT": "Walmart", "BTC-USD": "Bitcoin", "DOGE-USD": "Dogecoin",
-  "SOL-USD": "Solana", "XRP-USD": "XRP", "USAR": "USA Rare Earth", "ISRG": "Intuitive Surgical",
-  "LMT": "Lockheed Martin", "MU": "Micron Technology", "ANET": "Arista Networks", "CSCO": "Cisco",
-  "VRT": "Vertiv", "AVGO": "Broadcom"
+  "ANT": "Anthropic", "AAPL": "Apple", "AMZN": "Amazon", "BRK-B": "Berkshire Hathaway",
+  "COST": "Costco", "DLTR": "Dollar Tree", "EQIX": "Equinix", "GOOGL": "Alphabet (Google)",
+  "HOOD": "Robinhood", "META": "Meta", "MSFT": "Microsoft", "NVDA": "Nvidia", "ORCL": "Oracle",
+  "PLTR": "Palantir", "TMO": "Thermo Fisher", "TSM": "TSMC", "VLO": "Valero Energy",
+  "VOO": "Vanguard S&P 500", "WDC": "Western Digital", "WMT": "Walmart", "BTC-USD": "Bitcoin",
+  "DOGE-USD": "Dogecoin", "SOL-USD": "Solana", "XRP-USD": "XRP", "USAR": "USA Rare Earth",
+  "ISRG": "Intuitive Surgical", "LMT": "Lockheed Martin", "MU": "Micron Technology",
+  "ANET": "Arista Networks", "CSCO": "Cisco", "VRT": "Vertiv", "AVGO": "Broadcom"
 };
 
 function toggleWeatherDetail(idx){
@@ -352,7 +357,6 @@ async function refreshLiveMarketData(){
   const uniqueSymbols = Array.from(new Set(allSymbols));
   const joined = uniqueSymbols.join(',');
   
-  // Public CORS query wrapper for real-time market quotes
   const apiUrl = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(joined);
   
   try {
@@ -364,7 +368,6 @@ async function refreshLiveMarketData(){
         quoteList = json.quoteResponse.result || [];
       }
     } catch(err) {
-      // Fallback via CORS proxy if direct fetch is blocked by browser origin policy
       const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl);
       const res = await fetch(proxyUrl);
       if(res.ok){
@@ -377,11 +380,10 @@ async function refreshLiveMarketData(){
 
     const quotesMap = {};
     quoteList.forEach(q => {
-      quotesMap[q.symbol] = {
-        price: q.regularMarketPrice || 0,
-        prevClose: q.regularMarketPreviousClose || (q.regularMarketPrice || 0),
-        changePct: q.regularMarketChangePercent !== undefined ? q.regularMarketChangePercent : 0
-      };
+      let price = q.regularMarketPrice || 0;
+      let prevClose = q.regularMarketPreviousClose || (q.symbol === 'ANT' ? 83.00 : price);
+      let changePct = q.regularMarketChangePercent !== undefined ? q.regularMarketChangePercent : (prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0);
+      quotesMap[q.symbol] = { price, prevClose, changePct };
     });
 
     let totalBrokerage = LIVE_PORTFOLIO_CONFIG.cash;
@@ -398,7 +400,7 @@ async function refreshLiveMarketData(){
         pulseItems.push({
           ticker: sym,
           name: LIVE_COMPANY_NAMES[sym] || sym,
-          sharesDisplay: shares + ' shares',
+          sharesDisplay: shares + (shares === 1 ? ' share' : ' shares'),
           valOwned: '$' + valOwned.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}),
           valNum: valOwned,
           pctNum: q.changePct,
@@ -587,8 +589,8 @@ updateWeather();
 updatePadres();
 updateDailyServiceCounter();
 updateBiweeklyWealthAccrual();
-refreshLiveMarketData(); // Live on every page load and browser refresh
-setInterval(refreshLiveMarketData, 30000); // Background refresh every 30s while dashboard is kept open
+refreshLiveMarketData();
+setInterval(refreshLiveMarketData, 30000);
 setInterval(updatePadres, 30000);"""
 
 def extract_thumb(e, cat="general"):
@@ -680,9 +682,9 @@ def fetch_market_quotes_batch(tickers):
             
             if p is None or prev is None:
                 fi = getattr(t, "fast_info", None)
-                if fi and fi.last_price and fi.previous_close:
+                if fi and fi.last_price:
                     p = float(fi.last_price)
-                    prev = float(fi.previous_close)
+                    prev = float(fi.previous_close) if fi.previous_close else (83.00 if sym == "ANT" else p)
                 else:
                     h = t.history(period="2d")
                     if len(h) >= 2:
@@ -690,7 +692,7 @@ def fetch_market_quotes_batch(tickers):
                         prev = float(h["Close"].iloc[-2])
                     elif len(h) == 1:
                         p = float(h["Close"].iloc[-1])
-                        prev = p
+                        prev = 83.00 if sym == "ANT" else p
 
             if p is not None and prev is not None and prev > 0:
                 chg = ((p - prev) / prev) * 100.0
@@ -980,7 +982,7 @@ def get_portfolio_pulse(market_quotes):
         out.append({
             "ticker": sym,
             "name": COMPANY_NAMES.get(sym, sym),
-            "shares_display": f"{shares:g} shares",
+            "shares_display": f"{shares:g} share" if shares == 1 else f"{shares:g} shares",
             "val_owned": f"${val_owned:,.2f}" if p else "N/A",
             "val_num": val_owned,
             "pct_num": chg,
@@ -1088,7 +1090,7 @@ def render_watchlist_list(quotes):
     return out
 
 def run_agent():
-    print("Executing single-pass market build...")
+    print("Executing single-pass market build with Anthropic (ANT) and USA Rare Earth (USAR)...")
     all_needed_tickers = list(set(HOLDINGS + WATCHLIST))
     market_quotes = fetch_market_quotes_batch(all_needed_tickers)
     
